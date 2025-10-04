@@ -98,11 +98,10 @@ const RegisterPage = () => {
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate('/');
-    }, 1500);
+    // TODO: Replace with actual API call to backend
+    // Example: const response = await authAPI.register(formData);
+    setIsLoading(false);
+    navigate('/');
   };
 
   return (

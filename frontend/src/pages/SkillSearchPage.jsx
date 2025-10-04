@@ -119,8 +119,9 @@ const SkillSearchPage = () => {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      // Here you would send the barter request
-      console.log('Barter request sent:', {
+      // TODO: Replace with actual API call to backend
+      // Example: await barterAPI.createSkillRequest({ toSkill: selectedSkill, fromSkill: selectedMySkill, message, scheduledDate, scheduledTime });
+      console.log('Skill barter request (needs backend implementation):', {
         toSkill: selectedSkill,
         fromSkill: selectedMySkill,
         message,

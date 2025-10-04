@@ -43,11 +43,10 @@ const LoginPage = () => {
       return;
     }
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate('/');
-    }, 1000);
+    // TODO: Replace with actual API call to backend
+    // Example: const response = await authAPI.login(formData);
+    setIsLoading(false);
+    navigate('/');
   };
 
   return (

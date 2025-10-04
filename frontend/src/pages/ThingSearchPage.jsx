@@ -114,7 +114,9 @@ const ThingSearchPage = () => {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      console.log('Thing barter request sent:', {
+      // TODO: Replace with actual API call to backend
+      // Example: await barterAPI.createThingRequest({ toThing: selectedThing, fromThing: selectedMyThing, barterPeriod, message });
+      console.log('Thing barter request (needs backend implementation):', {
         toThing: selectedThing,
         fromThing: selectedMyThing,
         barterPeriod,

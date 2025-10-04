@@ -29,6 +29,8 @@ const NotificationsPage = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAsRead = (notificationId) => {
+    // TODO: Replace with actual API call to backend
+    // Example: await notificationsAPI.markAsRead(notificationId);
     setNotifications(prev => 
       prev.map(notification => 
         notification.id === notificationId 
@@ -39,6 +41,8 @@ const NotificationsPage = () => {
   };
 
   const markAllAsRead = () => {
+    // TODO: Replace with actual API call to backend
+    // Example: await notificationsAPI.markAllAsRead();
     setNotifications(prev => 
       prev.map(notification => ({ ...notification, read: true }))
     );

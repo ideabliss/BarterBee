@@ -88,14 +88,13 @@ const RegisterPage = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
+    // TODO: Replace with actual API call to backend
+    // Example: const response = await authAPI.register(formData);
+    setIsLoading(false);
+    setStep(3); // Welcome step
     setTimeout(() => {
-      setIsLoading(false);
-      setStep(3); // Welcome step
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    }, 1000);
+      navigate('/dashboard');
+    }, 2000);
   };
 
   const renderStepIndicator = () => (

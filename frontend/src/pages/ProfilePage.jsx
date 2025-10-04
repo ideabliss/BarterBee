@@ -71,6 +71,11 @@ const ProfilePage = () => {
                   size="sm"
                   variant="danger"
                   icon={<TrashIcon className="h-4 w-4" />}
+                  onClick={() => {
+                    // TODO: Replace with actual API call to backend
+                    // Example: await profileAPI.deleteSkill(skill.id);
+                    console.log('Delete skill (needs backend implementation):', skill.id);
+                  }}
                 />
               </div>
             )}
@@ -129,6 +134,11 @@ const ProfilePage = () => {
                   size="sm"
                   variant="danger"
                   icon={<TrashIcon className="h-4 w-4" />}
+                  onClick={() => {
+                    // TODO: Replace with actual API call to backend
+                    // Example: await profileAPI.deleteThing(thing.id);
+                    console.log('Delete thing (needs backend implementation):', thing.id);
+                  }}
                 />
               </div>
             )}
@@ -165,11 +175,21 @@ const ProfilePage = () => {
               size="sm"
               variant="outline"
               icon={<PencilIcon className="h-4 w-4" />}
+              onClick={() => {
+                // TODO: Replace with actual API call to backend
+                // Example: await profileAPI.editOpinion(opinion.id);
+                console.log('Edit opinion (needs backend implementation):', opinion.id);
+              }}
             />
             <Button
               size="sm"
               variant="danger"
               icon={<TrashIcon className="h-4 w-4" />}
+              onClick={() => {
+                // TODO: Replace with actual API call to backend
+                // Example: await profileAPI.deleteOpinion(opinion.id);
+                console.log('Delete opinion (needs backend implementation):', opinion.id);
+              }}
             />
           </div>
         )}
@@ -284,7 +304,12 @@ const ProfilePage = () => {
             <Button
               variant="primary"
               className="flex-1"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={() => {
+                // TODO: Replace with actual API call to backend
+                // Example: await profileAPI.addItem(activeTab, formData);
+                console.log(`Add ${activeTab.slice(0, -1)} (needs backend implementation):`, formData);
+                setIsAddModalOpen(false);
+              }}
             >
               Add {activeTab.slice(0, -1)}
             </Button>

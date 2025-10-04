@@ -28,8 +28,9 @@ const PollsPage = () => {
 
   const handleVote = (pollId, optionIndex) => {
     setVotedPolls(prev => new Set([...prev, pollId]));
-    // In a real app, this would send the vote to the backend
-    console.log(`Voted for option ${optionIndex} in poll ${pollId}`);
+    // TODO: Replace with actual API call to backend
+    // Example: await pollsAPI.vote(pollId, optionIndex);
+    console.log(`Vote (needs backend implementation): option ${optionIndex} in poll ${pollId}`);
   };
 
   const getTimeAgo = (dateString) => {
@@ -197,7 +198,9 @@ const PollsPage = () => {
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      console.log('Creating poll:', { pollType, question, options: pollType === 'text' ? options : imageOptions });
+      // TODO: Replace with actual API call to backend
+      // Example: await pollsAPI.createPoll({ pollType, question, options: pollType === 'text' ? options : imageOptions });
+      console.log('Poll creation (needs backend implementation):', { pollType, question, options: pollType === 'text' ? options : imageOptions });
       setCreatePollModal(false);
       // Reset form
       setQuestion('');
