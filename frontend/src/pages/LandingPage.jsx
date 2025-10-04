@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   UserGroupIcon, 
@@ -6,11 +6,15 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ArrowRightIcon,
   CheckCircleIcon,
-  StarIcon
+  StarIcon,
+  Bars3Icon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { Button } from '../components/UI';
 
 const LandingPage = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const features = [
     {
       icon: UserGroupIcon,
@@ -107,14 +111,56 @@ const LandingPage = () => {
 
             {/* Mobile menu button */}
             <div className="md:hidden">
-              <button className="text-gray-600 hover:text-gray-900">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                {isMobileMenuOpen ? (
+                  <XMarkIcon className="h-6 w-6" />
+                ) : (
+                  <Bars3Icon className="h-6 w-6" />
+                )}
               </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-100">
+            <div className="px-4 py-2 space-y-1">
+              <a 
+                href="#home" 
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Home
+              </a>
+              <a 
+                href="#how-it-works" 
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                How it Works
+              </a>
+              <a 
+                href="#features" 
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Features
+              </a>
+              <Link 
+                to="/login" 
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 font-medium"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
+              
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section - Mobile Optimized */}
