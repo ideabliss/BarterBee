@@ -15,6 +15,10 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(prev => !prev);
+  };
   
   const unreadNotifications = mockNotifications.filter(n => !n.read).length;
   
@@ -30,7 +34,7 @@ const Navbar = () => {
   };
   
   return (
-    <nav className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100 sticky top-0 z-50 transition-all duration-300">
+    <nav className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100 sticky top-0 z-50 transition-all duration-300 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -98,8 +102,11 @@ const Navbar = () => {
           {/* Mobile menu button */}
           <div className="md:hidden">
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="group text-gray-500 hover:text-gray-700 p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 hover:shadow-md transform hover:scale-105"
+              onClick={toggleMobileMenu}
+              className="group text-gray-500 hover:text-gray-700 active:text-gray-800 p-3 rounded-xl hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center relative z-50"
+              aria-label="Toggle mobile menu"
+              aria-expanded={isMobileMenuOpen}
+              type="button"
             >
               {isMobileMenuOpen ? (
                 <XMarkIcon className="h-6 w-6 transition-transform duration-300 group-hover:rotate-90" />
@@ -113,7 +120,7 @@ const Navbar = () => {
       
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-md">
+        <div className="md:hidden border-t border-gray-100 bg-white shadow-lg animate-slideDown">
           <div className="px-4 pt-4 pb-4 space-y-2">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
