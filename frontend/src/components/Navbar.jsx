@@ -17,7 +17,9 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(prev => !prev);
+    const newState = !isMobileMenuOpen;
+    console.log('🍔 Hamburger clicked! Changing state from', isMobileMenuOpen, 'to', newState);
+    setIsMobileMenuOpen(newState);
   };
   
   const unreadNotifications = mockNotifications.filter(n => !n.read).length;
@@ -103,25 +105,24 @@ const Navbar = () => {
           <div className="md:hidden">
             <button
               onClick={toggleMobileMenu}
-              className="group text-gray-500 hover:text-gray-700 active:text-gray-800 p-3 rounded-xl hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 min-w-[44px] min-h-[44px] flex items-center justify-center relative z-50"
-              aria-label="Toggle mobile menu"
-              aria-expanded={isMobileMenuOpen}
+              className="text-gray-700 p-3 rounded-lg bg-yellow-100 border-2 border-yellow-500"
               type="button"
             >
               {isMobileMenuOpen ? (
-                <XMarkIcon className="h-6 w-6 transition-transform duration-300 group-hover:rotate-90" />
+                <XMarkIcon className="h-6 w-6" />
               ) : (
-                <Bars3Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
+                <Bars3Icon className="h-6 w-6" />
               )}
+              <span className="sr-only">Toggle menu</span>
             </button>
           </div>
         </div>
       </div>
       
-      {/* Mobile Navigation */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white shadow-lg animate-slideDown">
-          <div className="px-4 pt-4 pb-4 space-y-2">
+      {/* Mobile Navigation - Simple visible approach */}
+      <div className={`md:hidden bg-yellow-50 border-t border-yellow-300 p-4 ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
+        <p className="text-red-600 font-bold mb-2">MENU IS {isMobileMenuOpen ? 'OPEN' : 'CLOSED'}</p>
+        <div className="space-y-2">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               const Icon = item.icon;
@@ -165,7 +166,6 @@ const Navbar = () => {
             </div>
           </div>
         </div>
-      )}
     </nav>
   );
 };
