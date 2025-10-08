@@ -203,6 +203,12 @@ class ApiService {
     });
   }
 
+  async deletePoll(id) {
+    return this.request(`/polls/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Barter requests endpoints
   async createBarterRequest(requestData) {
     return this.request('/barter', {

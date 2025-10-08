@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Badge, Button } from '../UI';
 
-const ViewSkillModal = ({ isOpen, onClose, skill, onEdit }) => {
+const ViewSkillModal = ({ isOpen, onClose, skill, onEdit, onDelete }) => {
   if (!skill) return null;
 
   return (
@@ -50,6 +50,18 @@ const ViewSkillModal = ({ isOpen, onClose, skill, onEdit }) => {
             onClick={onClose}
           >
             Close
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this skill?')) {
+                onDelete(skill.id);
+                onClose();
+              }
+            }}
+          >
+            Delete
           </Button>
           <Button
             variant="primary"

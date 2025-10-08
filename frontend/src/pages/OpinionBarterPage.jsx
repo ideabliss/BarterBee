@@ -257,8 +257,22 @@ const OpinionBarterPage = () => {
                       Created {new Date(poll.created_at || Date.now()).toLocaleDateString()}
                     </span>
                     <div className="flex flex-col md:flex-row gap-2">
-                      <Button size="sm" variant="outline" className="w-full md:w-auto">
-                        View Details
+                      <Button 
+                        size="sm" 
+                        variant="danger" 
+                        className="w-full md:w-auto"
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to delete this poll?')) {
+                            try {
+                              await apiService.deletePoll(poll.id);
+                              loadUserPolls();
+                            } catch (error) {
+                              console.error('Failed to delete poll:', error);
+                            }
+                          }
+                        }}
+                      >
+                        Delete
                       </Button>
                       <Button size="sm" variant="outline" className="w-full md:w-auto">
                         Share

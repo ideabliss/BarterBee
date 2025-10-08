@@ -61,6 +61,16 @@ const skillController = {
     try {
       const { name, description, category, image, skill_level, years_experience } = req.body;
       
+      console.log('Creating skill with data:', {
+        user_id: req.userId,
+        name,
+        description,
+        category,
+        image,
+        skill_level,
+        years_experience
+      });
+      
       const { data: skill, error } = await supabase
         .from('skills')
         .insert([{
@@ -68,7 +78,7 @@ const skillController = {
           name,
           description,
           category,
-          image,
+          image: image || null,
           skill_level,
           years_experience
         }])

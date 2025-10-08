@@ -19,9 +19,16 @@ app.use(cors({
       'http://localhost:5173'
     ];
     
-    if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Allow localhost and vercel domains
+    if (allowedOrigins.includes(origin) || origin.includes('vercel.app') || origin.includes('localhost')) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

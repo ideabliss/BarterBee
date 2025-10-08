@@ -124,6 +124,8 @@ const AddSkillModal = ({ isOpen, onClose, onSubmit }) => {
           placeholder="https://example.com/image.jpg"
         />
 
+
+
         <div className="flex space-x-3 pt-4">
           <Button
             type="button"

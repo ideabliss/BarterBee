@@ -507,6 +507,14 @@ const ItemBarterPage = () => {
           setSelectedItemForView(item);
           setShowEditModal(true);
         }}
+        onDelete={async (itemId) => {
+          try {
+            await apiService.deleteItem(itemId);
+            loadUserItems();
+          } catch (error) {
+            console.error('Failed to delete item:', error);
+          }
+        }}
       />
 
       <EditItemModal

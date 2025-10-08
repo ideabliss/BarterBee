@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Badge, Button } from '../UI';
 
-const ViewItemModal = ({ isOpen, onClose, item, onEdit }) => {
+const ViewItemModal = ({ isOpen, onClose, item, onEdit, onDelete }) => {
   if (!item) return null;
 
   return (
@@ -64,6 +64,18 @@ const ViewItemModal = ({ isOpen, onClose, item, onEdit }) => {
             onClick={onClose}
           >
             Close
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this item?')) {
+                onDelete(item.id);
+                onClose();
+              }
+            }}
+          >
+            Delete
           </Button>
           <Button
             variant="primary"

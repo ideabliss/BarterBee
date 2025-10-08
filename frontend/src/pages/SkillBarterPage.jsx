@@ -602,6 +602,14 @@ const SkillBarterPage = () => {
           setSelectedSkillForView(skill);
           setShowEditModal(true);
         }}
+        onDelete={async (skillId) => {
+          try {
+            await apiService.deleteSkill(skillId);
+            loadUserSkills();
+          } catch (error) {
+            console.error('Failed to delete skill:', error);
+          }
+        }}
       />
 
       <EditSkillModal
