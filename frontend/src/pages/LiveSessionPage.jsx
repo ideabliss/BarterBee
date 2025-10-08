@@ -59,7 +59,10 @@ const LiveSessionPage = () => {
       }
       
       // Initialize Socket.IO first (don't wait for camera)
-      socketRef.current = io('http://localhost:5000');
+      const socketUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://barterbee.onrender.com'
+        : 'http://localhost:5000';
+      socketRef.current = io(socketUrl);
       
       socketRef.current.on('connect', () => {
         console.log('Socket connected');
