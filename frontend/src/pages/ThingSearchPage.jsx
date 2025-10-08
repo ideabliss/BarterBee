@@ -47,30 +47,30 @@ const ThingSearchPage = () => {
   };
 
   const ThingCard = ({ thing }) => (
-    <Card className="p-6 hover:shadow-lg transition-shadow duration-200">
-      <div className="flex items-start space-x-4">
+    <Card className="p-4 sm:p-6 hover:shadow-lg transition-shadow duration-200">
+      <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-4">
         <img
           src={thing.image}
           alt={thing.name}
-          className="w-24 h-24 object-cover rounded-lg"
+          className="w-full sm:w-24 h-48 sm:h-24 object-cover rounded-lg"
         />
         
-        <div className="flex-1">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">{thing.name}</h3>
-              <p className="text-sm text-gray-600">{thing.description}</p>
+        <div className="flex-1 w-full">
+          <div className="flex items-start justify-between mb-2 gap-2">
+            <div className="flex-1">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{thing.name}</h3>
+              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{thing.description}</p>
             </div>
-            <div className="flex flex-col items-end space-y-1">
-              <Badge variant="primary">{thing.category}</Badge>
-              {thing.available && <Badge variant="success">Available</Badge>}
+            <div className="flex flex-col items-end space-y-1 shrink-0">
+              <Badge variant="primary" className="text-xs">{thing.category}</Badge>
+              {thing.available && <Badge variant="success" className="text-xs">Available</Badge>}
             </div>
           </div>
           
-          <div className="flex items-center space-x-4 mt-3 mb-4 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center gap-3 mt-3 mb-4 text-xs sm:text-sm text-gray-500">
             <div className="flex items-center space-x-1">
               <CheckCircleIcon className="h-4 w-4" />
-              <span>{thing.condition} condition</span>
+              <span>{thing.condition}</span>
             </div>
             <div className="flex items-center space-x-1">
               <MapPinIcon className="h-4 w-4" />
@@ -78,7 +78,7 @@ const ThingSearchPage = () => {
             </div>
           </div>
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
               <Avatar src={thing.user.profilePicture} alt={thing.user.name} size="sm" />
               <div>
@@ -87,9 +87,9 @@ const ThingSearchPage = () => {
               </div>
             </div>
             
-            <div className="flex space-x-2">
-              <Link to={`/user/${thing.user.id}`}>
-                <Button size="sm" variant="outline">
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto space-y-2 sm:space-y-0 sm:space-x-2">
+              <Link to={`/user/${thing.user.id}`} className="w-full sm:w-auto">
+                <Button size="sm" variant="outline" className="w-full">
                   View Profile
                 </Button>
               </Link>
@@ -97,6 +97,7 @@ const ThingSearchPage = () => {
                 size="sm" 
                 variant="primary"
                 onClick={() => handleBarterRequest(thing)}
+                className="w-full sm:w-auto"
               >
                 Request Barter
               </Button>
@@ -133,16 +134,16 @@ const ThingSearchPage = () => {
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
             <div className="flex items-center space-x-3">
               <img
                 src={selectedThing?.image}
                 alt={selectedThing?.name}
-                className="w-12 h-12 object-cover rounded-lg"
+                className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg"
               />
               <div>
-                <div className="font-medium text-gray-900">{selectedThing?.name}</div>
-                <div className="text-sm text-gray-600">from {selectedThing?.user.name}</div>
+                <div className="font-medium text-sm sm:text-base text-gray-900">{selectedThing?.name}</div>
+                <div className="text-xs sm:text-sm text-gray-600">from {selectedThing?.user.name}</div>
               </div>
             </div>
           </div>
@@ -154,7 +155,7 @@ const ThingSearchPage = () => {
             <select
               value={selectedMyThing}
               onChange={(e) => setSelectedMyThing(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             >
               <option value="">Select an item to offer</option>
@@ -165,7 +166,7 @@ const ThingSearchPage = () => {
               ))}
             </select>
             {currentUser.things.filter(thing => thing.available).length === 0 && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 You don't have any available items. <Link to="/profile?tab=things" className="text-blue-600 hover:underline">Add items to your profile</Link>
               </p>
             )}
@@ -178,7 +179,7 @@ const ThingSearchPage = () => {
             <select
               value={barterPeriod}
               onChange={(e) => setBarterPeriod(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             >
               <option value="3">3 days</option>
@@ -197,23 +198,23 @@ const ThingSearchPage = () => {
               rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Tell them why you need this item and how you'll take care of it..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Tell them why you need this item..."
+              className="w-full px-3 py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm text-blue-800">
+          <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+            <div className="text-xs sm:text-sm text-blue-800">
               <strong>Note:</strong> Both parties will exchange postal addresses upon acceptance. 
               Items should be returned in the same condition after the barter period.
             </div>
           </div>
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
             <Button
               type="button"
               variant="secondary"
-              className="flex-1"
+              className="flex-1 w-full"
               onClick={() => setBarterModalOpen(false)}
             >
               Cancel
@@ -221,7 +222,7 @@ const ThingSearchPage = () => {
             <Button 
               type="submit" 
               variant="primary" 
-              className="flex-1"
+              className="flex-1 w-full"
               disabled={currentUser.things.filter(thing => thing.available).length === 0}
             >
               Send Request
@@ -233,36 +234,36 @@ const ThingSearchPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 mb-16 sm:mb-0">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Browse Items to Borrow</h1>
-        <p className="text-gray-600">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Browse Items to Borrow</h1>
+        <p className="text-sm sm:text-base text-gray-600">
           Find items you need temporarily and offer something in return through postal exchange.
         </p>
       </div>
 
       {/* Search and Filters */}
-      <Card className="p-6 mb-6">
-        <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-          <div className="flex-1">
+      <Card className="p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="flex flex-col space-y-3 sm:space-y-4">
+          <div className="w-full">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
-                placeholder="Search items, descriptions, or owners..."
+                placeholder="Search items..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
           
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-4 py-2.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">All Categories</option>
               {categories.filter(cat => cat !== 'all').map(category => (
@@ -276,6 +277,7 @@ const ThingSearchPage = () => {
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               icon={<AdjustmentsHorizontalIcon className="h-5 w-5" />}
+              className="w-full sm:w-auto"
             >
               Filters
             </Button>
@@ -324,9 +326,9 @@ const ThingSearchPage = () => {
       </Card>
 
       {/* Results */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900">
             {filteredThings.length} Items Available
           </h2>
           <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -339,16 +341,16 @@ const ThingSearchPage = () => {
       </div>
 
       {/* Things Grid */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {filteredThings.length > 0 ? (
           filteredThings.map(thing => (
             <ThingCard key={`${thing.user.id}-${thing.id}`} thing={thing} />
           ))
         ) : (
-          <Card className="p-12 text-center">
-            <div className="text-6xl mb-4">📦</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Items Found</h3>
-            <p className="text-gray-600 mb-4">
+          <Card className="p-8 sm:p-12 text-center">
+            <div className="text-4xl sm:text-6xl mb-4">📦</div>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No Items Found</h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
               Try adjusting your search terms or filters to find what you're looking for.
             </p>
             <Button onClick={() => {
