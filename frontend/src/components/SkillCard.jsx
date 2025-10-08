@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { StarIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline';
 import { Card, Button, Badge, Avatar } from './UI';
 
-const SkillCard = ({ skill, onBarterRequest }) => (
+const SkillCard = ({ skill, onBarterRequest, onViewProfile }) => (
   <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 border-0 bg-white">
     <div className="flex flex-col md:flex-row">
       <div className="w-full md:w-48 h-48 md:h-32 flex-shrink-0">
@@ -52,11 +52,14 @@ const SkillCard = ({ skill, onBarterRequest }) => (
           </div>
           
           <div className="flex flex-col md:flex-row gap-2 md:gap-3">
-            <Link to={`/user/${skill.user.id}`} className="w-full md:w-auto">
-              <Button size="sm" variant="outline" className="w-full md:w-auto">
-                View Profile
-              </Button>
-            </Link>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="w-full md:w-auto"
+              onClick={() => onViewProfile && onViewProfile(skill.user)}
+            >
+              View Profile
+            </Button>
             <Button 
               size="sm" 
               onClick={() => onBarterRequest(skill)}

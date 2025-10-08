@@ -75,20 +75,9 @@ const pollController = {
   // Create new poll
   createPoll: async (req, res) => {
     try {
-      const { question, type, options, points_cost = 3 } = req.body;
+      const { question, type, options, points_cost = 0 } = req.body;
       
-      // Check if user has enough points
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('points')
-        .eq('id', req.userId)
-        .single();
-      
-      if (userError || user.points < points_cost) {
-        return res.status(400).json({ error: 'Insufficient points to create poll' });
-      }
-      
-      // Create poll
+      // Create poll without points check
       const { data: poll, error } = await supabase
         .from('polls')
         .insert([{
@@ -105,12 +94,6 @@ const pollController = {
       if (error) {
         return res.status(400).json({ error: error.message });
       }
-      
-      // Deduct points from user
-      await supabase
-        .from('users')
-        .update({ points: user.points - points_cost })
-        .eq('id', req.userId);
       
       res.status(201).json({ message: 'Poll created successfully', poll });
     } catch (error) {

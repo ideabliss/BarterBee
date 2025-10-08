@@ -2,9 +2,10 @@ import React from 'react';
 import { Modal, Button, Badge } from '../UI';
 import { useAuth } from '../../context/AuthContext';
 
-const ProfileModal = ({ isOpen, onClose }) => {
-  const { user } = useAuth();
-
+const ProfileModal = ({ isOpen, onClose, user: profileUser }) => {
+  const { user: currentUser } = useAuth();
+  
+  const user = profileUser || currentUser;
   if (!user) return null;
 
   return (

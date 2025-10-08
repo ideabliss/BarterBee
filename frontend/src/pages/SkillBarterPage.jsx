@@ -17,6 +17,7 @@ import SessionViewModal from '../components/modals/SessionViewModal';
 import SessionHistoryModal from '../components/modals/SessionHistoryModal';
 import ChatModal from '../components/modals/ChatModal';
 import ReviewModal from '../components/modals/ReviewModal';
+import ProfileModal from '../components/modals/ProfileModal';
 
 const SkillBarterPage = () => {
   const { user } = useAuth();
@@ -36,6 +37,8 @@ const SkillBarterPage = () => {
   const [showSessionRequestModal, setShowSessionRequestModal] = useState(false);
   const [showSessionViewModal, setShowSessionViewModal] = useState(false);
   const [showSessionHistoryModal, setShowSessionHistoryModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [selectedSkillForView, setSelectedSkillForView] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -258,6 +261,10 @@ const SkillBarterPage = () => {
                     responseTime: skill.response_time || 24
                   }} 
                   onBarterRequest={handleBarterRequest}
+                  onViewProfile={(userProfile) => {
+                    setSelectedUserProfile(userProfile);
+                    setShowProfileModal(true);
+                  }}
                 />
               ))
             ) : (
@@ -652,6 +659,12 @@ const SkillBarterPage = () => {
         isOpen={showReviewModal}
         onClose={() => setShowReviewModal(false)}
         activity={selectedActivity}
+      />
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={selectedUserProfile}
       />
     </div>
   );
