@@ -17,7 +17,8 @@ app.use(cors({
     'http://localhost:3000',
     'http://localhost:5173',
     'https://barter-bee-c6dl.vercel.app',
-    'https://barter-bee-c6dl-pnmxlr8uw-parth-chavans-projects-b0e79f41.vercel.app'
+    'https://barter-bee-c6dl-pnmxlr8uw-parth-chavans-projects-b0e79f41.vercel.app',
+    'https://barter-bee-smoky.vercel.app'
   ],
   credentials: true
 }));
