@@ -13,13 +13,18 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'https://barter-bee-c6dl.vercel.app',
-    'https://barter-bee-c6dl-pnmxlr8uw-parth-chavans-projects-b0e79f41.vercel.app',
-    'https://barter-bee-smoky.vercel.app'
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
