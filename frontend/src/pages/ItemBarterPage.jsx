@@ -8,6 +8,7 @@ import ItemBarterRequestModal from '../components/modals/ItemBarterRequestModal'
 import AddItemModal from '../components/modals/AddItemModal';
 import ViewItemModal from '../components/modals/ViewItemModal';
 import EditItemModal from '../components/modals/EditItemModal';
+import ProfileModal from '../components/modals/ProfileModal';
 import ChatModal from '../components/modals/ChatModal';
 import TrackingModal from '../components/modals/TrackingModal';
 
@@ -17,12 +18,14 @@ const ItemBarterPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showItemAcceptDeclineModal, setShowItemAcceptDeclineModal] = useState(false);
   const [showBarterRequestModal, setShowBarterRequestModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [selectedItemForView, setSelectedItemForView] = useState(null);
   const [selectedItemForRequest, setSelectedItemForRequest] = useState(null);
+  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [loading, setLoading] = useState(false);
   const [allItems, setAllItems] = useState([]);
@@ -70,7 +73,10 @@ const ItemBarterPage = () => {
   const loadRequests = async () => {
     try {
       const response = await apiService.getBarterRequests();
-      setItemRequests(response.requests?.filter(req => req.type === 'item') || []);
+      console.log('All barter requests:', response.requests);
+      const itemReqs = response.requests?.filter(req => req.type === 'item') || [];
+      console.log('Filtered item requests:', itemReqs);
+      setItemRequests(itemReqs);
     } catch (error) {
       console.error('Failed to load requests:', error);
     }
@@ -205,11 +211,8 @@ const ItemBarterPage = () => {
                         size="sm"
                         className="flex-1"
                         onClick={() => {
-                          setSelectedItemForView({
-                            ...item.users,
-                            user: item.users
-                          });
-                          setShowViewModal(true);
+                          setSelectedUserProfile(item.users);
+                          setShowProfileModal(true);
                         }}
                       >
                         View Profile
@@ -363,6 +366,8 @@ const ItemBarterPage = () => {
                           onClick={() => {
                             setSelectedActivity({
                               requestId: request.id,
+                              fromUserId: request.from_user_id,
+                              toUserId: request.to_user_id,
                               partnerName: request.from_user?.name || 'Unknown User',
                               partnerAvatar: request.from_user?.profile_picture,
                               requestMessage: request.message,
@@ -477,6 +482,7 @@ const ItemBarterPage = () => {
         isOpen={showItemAcceptDeclineModal}
         onClose={() => setShowItemAcceptDeclineModal(false)}
         activity={selectedActivity}
+        currentUserId={user?.id}
         onAccept={async (requestId, message) => {
           try {
             await apiService.updateBarterStatus(requestId, 'accepted');
@@ -494,7 +500,8 @@ const ItemBarterPage = () => {
         }}
         onDecline={async (requestId, message) => {
           try {
-            await apiService.updateBarterStatus(requestId, 'declined');
+            const status = selectedActivity?.fromUserId === user?.id ? 'cancelled' : 'declined';
+            await apiService.updateBarterStatus(requestId, status);
             if (message) {
               await apiService.sendMessage({
                 barter_request_id: requestId,
@@ -504,7 +511,7 @@ const ItemBarterPage = () => {
             loadRequests();
             loadActivities();
           } catch (error) {
-            console.error('Failed to decline request:', error);
+            console.error('Failed to update request:', error);
           }
         }}
       />
@@ -538,6 +545,12 @@ const ItemBarterPage = () => {
         onClose={() => setShowEditModal(false)}
         item={selectedItemForView}
         onSuccess={loadUserItems}
+      />
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={selectedUserProfile}
       />
 
       <TrackingModal

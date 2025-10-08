@@ -152,9 +152,9 @@ const SkillBarterPage = () => {
     }
   };
 
-  const handleDeclineRequest = async (requestId, message) => {
+  const handleDeclineRequest = async (requestId, message, status = 'declined') => {
     try {
-      await apiService.updateBarterStatus(requestId, 'declined');
+      await apiService.updateBarterStatus(requestId, status);
       if (message) {
         await apiService.sendMessage({
           barter_request_id: requestId,
@@ -164,7 +164,7 @@ const SkillBarterPage = () => {
       loadRequests();
       loadActivities();
     } catch (error) {
-      console.error('Failed to decline request:', error);
+      console.error('Failed to update request:', error);
     }
   };
 
@@ -383,6 +383,8 @@ const SkillBarterPage = () => {
                             onClick={() => {
                               setSelectedActivity({
                                 requestId: request.id,
+                                fromUserId: request.from_user_id,
+                                toUserId: request.to_user_id,
                                 partnerName: request.from_user?.name || 'Unknown User',
                                 partnerAvatar: request.from_user?.profile_picture,
                                 requestMessage: request.message,
@@ -591,8 +593,12 @@ const SkillBarterPage = () => {
         isOpen={showAcceptDeclineModal}
         onClose={() => setShowAcceptDeclineModal(false)}
         activity={selectedActivity}
+        currentUserId={user?.id}
         onAccept={handleAcceptRequest}
-        onDecline={handleDeclineRequest}
+        onDecline={(requestId, message) => {
+          const status = selectedActivity?.fromUserId === user?.id ? 'cancelled' : 'declined';
+          handleDeclineRequest(requestId, message, status);
+        }}
       />
 
       <ChatModal

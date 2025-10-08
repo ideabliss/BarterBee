@@ -4,22 +4,7 @@ const barterController = {
   // Create barter request
   createRequest: async (req, res) => {
     try {
-      const { type, to_user_id, from_skill_id, to_skill_id, from_item_id, to_item_id, message, barter_period, shipping_method, preferred_date, number_of_sessions } = req.body;
-      
-      console.log('Creating barter request:', {
-        type,
-        from_user_id: req.userId,
-        to_user_id,
-        from_skill_id,
-        to_skill_id,
-        from_item_id,
-        to_item_id,
-        message,
-        barter_period,
-        shipping_method,
-        preferred_date,
-        number_of_sessions
-      });
+      const { type, to_user_id, from_skill_id, to_skill_id, from_item_id, to_item_id, message, barter_period, preferred_date, preferred_time } = req.body;
       
       const insertData = {
         type,
@@ -31,15 +16,13 @@ const barterController = {
       // Add skill-specific fields
       if (from_skill_id) insertData.from_skill_id = from_skill_id;
       if (to_skill_id) insertData.to_skill_id = to_skill_id;
+      if (preferred_date) insertData.preferred_date = preferred_date;
+      if (preferred_time) insertData.preferred_time = preferred_time;
       
       // Add item-specific fields
       if (from_item_id) insertData.from_item_id = from_item_id;
       if (to_item_id) insertData.to_item_id = to_item_id;
       if (barter_period) insertData.barter_period = barter_period;
-      if (shipping_method) insertData.shipping_method = shipping_method;
-      
-      // Add skill-specific fields
-      if (number_of_sessions) insertData.number_of_sessions = number_of_sessions;
       
       const { data: request, error } = await supabase
         .from('barter_requests')

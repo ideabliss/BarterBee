@@ -97,12 +97,27 @@ async function populateDatabase() {
       console.log(`✅ Inserted ${polls?.length || 0} polls`);
     }
     
+    // Insert barter requests
+    console.log('🔄 Inserting barter requests...');
+    const { data: requests, error: requestsError } = await supabase.from('barter_requests').insert([
+      { from_user_id: users[1].id, to_user_id: users[0].id, type: 'item', from_item_id: items[3].id, to_item_id: items[1].id, message: 'Hi Priya! Can I borrow your Hindi books? I can lend you my programming books.', barter_period: 14 },
+      { from_user_id: users[2].id, to_user_id: users[3].id, type: 'item', from_item_id: items[4].id, to_item_id: items[6].id, message: 'Hello Rohit! I need your camera for a photography project. You can borrow my pressure cooker.', barter_period: 7 },
+      { from_user_id: users[0].id, to_user_id: users[2].id, type: 'skill', from_skill_id: skills[0].id, to_skill_id: skills[4].id, message: 'Hi Kavya! I would love to learn South Indian cooking. I can teach you classical dance.', preferred_date: '2024-03-25', preferred_time: '18:00' }
+    ]).select();
+    
+    if (requestsError) {
+      console.error('❌ Error inserting requests:', requestsError);
+    } else {
+      console.log(`✅ Inserted ${requests?.length || 0} barter requests`);
+    }
+    
     console.log('🎉 Database population completed!');
     console.log('📊 Summary:');
     console.log(`   👥 Users: ${users.length}`);
     console.log(`   🎯 Skills: ${skills?.length || 0}`);
     console.log(`   📦 Items: ${items?.length || 0}`);
     console.log(`   🗳️ Polls: ${polls?.length || 0}`);
+    console.log(`   🔄 Requests: ${requests?.length || 0}`);
     
   } catch (error) {
     console.error('💥 Error populating database:', error);

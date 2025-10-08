@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Button } from '../UI';
 
-const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline }) => {
+const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline, currentUserId }) => {
   const [responseMessage, setResponseMessage] = useState('');
   const [postalAddress, setPostalAddress] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
+  
+  // Check if current user is the sender (from_user) or receiver (to_user)
+  const isSender = activity?.fromUserId === currentUserId;
 
   const handleAccept = async () => {
     setLoading(true);
@@ -32,10 +35,24 @@ const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline
     }
   };
 
+  const handleCancel = async () => {
+    setLoading(true);
+    try {
+      await onDecline?.(activity?.requestId, 'Request cancelled by sender');
+      onClose();
+    } catch (error) {
+      console.error('Failed to cancel request:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">  
       <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4">Respond to Item Exchange Request</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {isSender ? 'Your Item Exchange Request' : 'Respond to Item Exchange Request'}
+        </h3>
         
         <div className="bg-blue-50 p-4 rounded-lg mb-4">
           <div className="flex items-center gap-3 mb-3">
@@ -101,22 +118,47 @@ const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline
         </div>
         
         <div className="flex gap-3 mt-6">
-          <Button 
-            variant="outline" 
-            onClick={handleDecline}
-            disabled={loading}
-            className="flex-1 bg-red-500 text-white hover:bg-red-600"
-          >
-            Decline
-          </Button>
-          <Button 
-            onClick={handleAccept}
-            disabled={loading}
-            loading={loading}
-            className="flex-1 bg-green-500 hover:bg-green-600"
-          >
-            Accept Exchange
-          </Button>
+          {isSender ? (
+            // Sender can only cancel the request
+            <>
+              <Button 
+                variant="outline" 
+                onClick={onClose}
+                className="flex-1"
+              >
+                Close
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={loading}
+                loading={loading}
+                className="flex-1 bg-red-500 text-white hover:bg-red-600"
+              >
+                Cancel Request
+              </Button>
+            </>
+          ) : (
+            // Receiver can accept or decline
+            <>
+              <Button 
+                variant="outline" 
+                onClick={handleDecline}
+                disabled={loading}
+                className="flex-1 bg-red-500 text-white hover:bg-red-600"
+              >
+                Decline
+              </Button>
+              <Button 
+                onClick={handleAccept}
+                disabled={loading}
+                loading={loading}
+                className="flex-1 bg-green-500 hover:bg-green-600"
+              >
+                Accept Exchange
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
