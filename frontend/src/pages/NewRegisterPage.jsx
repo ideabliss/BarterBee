@@ -12,11 +12,14 @@ import {
   MapPinIcon
 } from '@heroicons/react/24/outline';
 import { Button, Input } from '../components/UI';
+import { useAuth } from '../context/AuthContext';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
+    username: '',
     name: '',
     email: '',
     password: '',
@@ -54,6 +57,7 @@ const RegisterPage = () => {
     const newErrors = {};
     
     if (currentStep === 1) {
+      if (!formData.username.trim()) newErrors.username = 'Username is required';
       if (!formData.name.trim()) newErrors.name = 'Name is required';
       if (!formData.email.trim()) newErrors.email = 'Email is required';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -86,15 +90,35 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    // TODO: Replace with actual API call to backend
-    // Example: const response = await authAPI.register(formData);
-    setIsLoading(false);
-    setStep(3); // Welcome step
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 2000);
+    const stepErrors = validateStep(2);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      return;
+    }
+    
+    setIsLoading(true);
+    setErrors({});
+    
+    try {
+      await register({
+        username: formData.username,
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        contact: formData.contact,
+        address: formData.address
+      });
+      
+      setStep(3); // Welcome step
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+    } catch (error) {
+      setErrors({ general: error.message || 'Registration failed' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderStepIndicator = () => (
@@ -137,6 +161,17 @@ const RegisterPage = () => {
       </div>
 
       <div className="space-y-5">
+        <Input
+          label="Username"
+          name="username"
+          type="text"
+          placeholder="Choose a unique username"
+          value={formData.username}
+          onChange={handleChange}
+          error={errors.username}
+          icon={<UserIcon className="h-5 w-5 text-gray-400" />}
+        />
+        
         <Input
           label="Full Name"
           name="name"
@@ -263,6 +298,12 @@ const RegisterPage = () => {
           </div>
         </div>
       </div>
+
+      {errors.general && (
+        <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+          {errors.general}
+        </div>
+      )}
 
       <div className="flex space-x-4">
         <Button

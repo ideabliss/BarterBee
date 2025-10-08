@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { EyeIcon, EyeSlashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button, Input } from '../components/UI';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+  
+  const from = location.state?.from?.pathname || '/dashboard';
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -43,10 +48,14 @@ const LoginPage = () => {
       return;
     }
     
-    // TODO: Replace with actual API call to backend
-    // Example: const response = await authAPI.login(formData);
-    setIsLoading(false);
-    navigate('/');
+    try {
+      await login(formData);
+      navigate(from, { replace: true });
+    } catch (error) {
+      setErrors({ general: error.message || 'Login failed' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -206,6 +215,12 @@ const LoginPage = () => {
                   </div>
                 </div>
 
+                {errors.general && (
+                  <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+                    {errors.general}
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   variant="primary"
@@ -238,12 +253,7 @@ const LoginPage = () => {
               </div>
             </div>
 
-            {/* Demo credentials */}
-            <div className="text-center text-xs text-gray-500 bg-gray-50 rounded-xl p-4">
-              <p className="font-semibold mb-2 text-gray-700">Demo Credentials:</p>
-              <p>📧 tanishka@example.com</p>
-              <p>🔑 password123</p>
-            </div>
+
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import apiService from '../services/api';
 import {
   VideoCameraIcon,
   VideoCameraSlashIcon,
@@ -10,11 +11,13 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { Button, Card, Avatar } from '../components/UI';
-import { mockSessions, mockUsers } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import io from 'socket.io-client';
 
 const LiveSessionPage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
@@ -22,18 +25,296 @@ const LiveSessionPage = () => {
   const [showChat, setShowChat] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
+  const [remoteUser, setRemoteUser] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [cameraPermission, setCameraPermission] = useState('prompt');
   
-  // Mock session data
-  const session = mockSessions.find(s => s.id === parseInt(sessionId)) || mockSessions[0];
-  const otherParticipant = session.participants.find(p => p.id !== 1); // Assuming current user is ID 1
+  // WebRTC refs
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const socketRef = useRef(null);
   
   useEffect(() => {
+    initializeVideoCall();
+    
     const timer = setInterval(() => {
       setSessionTime(prev => prev + 1);
     }, 1000);
     
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      cleanup();
+    };
   }, []);
+
+  const initializeVideoCall = async () => {
+    try {
+      console.log('Initializing video call...');
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia is not supported in this browser');
+      }
+      
+      // Initialize Socket.IO first (don't wait for camera)
+      socketRef.current = io('http://localhost:5000');
+      
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected');
+        // Join video room after socket connects
+        socketRef.current.emit('join-video-room', {
+          sessionId,
+          userId: user?.id || 'anonymous',
+          userName: user?.name || 'Anonymous User'
+        });
+      });
+      
+      // Socket event listeners
+      socketRef.current.on('user-joined', handleUserJoined);
+      socketRef.current.on('offer', handleOffer);
+      socketRef.current.on('answer', handleAnswer);
+      socketRef.current.on('ice-candidate', handleIceCandidate);
+      socketRef.current.on('user-left', handleUserLeft);
+      socketRef.current.on('video-chat-message', handleChatMessage);
+      
+      // Request camera access automatically
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        
+        console.log('Got local stream:', stream);
+        console.log('Video tracks:', stream.getVideoTracks());
+        console.log('Audio tracks:', stream.getAudioTracks());
+        
+        localStreamRef.current = stream;
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.onloadedmetadata = () => {
+            localVideoRef.current.play().catch(e => console.error('Local video play failed:', e));
+          };
+        }
+        
+        console.log('Camera access granted');
+        
+      } catch (error) {
+        console.log('Camera access failed:', error);
+        setIsVideoOn(false);
+        setIsAudioOn(false);
+      }
+      
+    } catch (error) {
+      console.error('Failed to initialize video call:', error);
+      alert('Failed to initialize video call: ' + error.message);
+    }
+  };
+
+  const createPeerConnection = () => {
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+    
+    const peerConnection = new RTCPeerConnection(configuration);
+    
+    console.log('Creating peer connection with local stream:', localStreamRef.current);
+    
+    // Add local stream to peer connection
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        console.log('Adding track:', track.kind, track.enabled);
+        peerConnection.addTrack(track, localStreamRef.current);
+      });
+    }
+    
+    // Handle remote stream
+    peerConnection.ontrack = (event) => {
+      console.log('Received remote track:', event.track.kind);
+      console.log('Remote streams:', event.streams);
+      
+      if (remoteVideoRef.current && event.streams[0]) {
+        console.log('Setting remote video source');
+        remoteVideoRef.current.srcObject = event.streams[0];
+        
+        // Ensure video plays
+        remoteVideoRef.current.onloadedmetadata = () => {
+          remoteVideoRef.current.play().catch(e => console.error('Remote video play failed:', e));
+        };
+      }
+    };
+    
+    // Handle ICE candidates
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('Sending ICE candidate');
+        socketRef.current.emit('ice-candidate', {
+          sessionId,
+          candidate: event.candidate
+        });
+      }
+    };
+    
+    // Connection state logging
+    peerConnection.onconnectionstatechange = () => {
+      console.log('Connection state:', peerConnection.connectionState);
+    };
+    
+    peerConnection.oniceconnectionstatechange = () => {
+      console.log('ICE connection state:', peerConnection.iceConnectionState);
+    };
+    
+    return peerConnection;
+  };
+
+  const handleUserJoined = async (data) => {
+    console.log('User joined:', data);
+    setRemoteUser(data);
+    setIsConnected(true);
+    
+    // Only create offer if we don't already have a peer connection
+    if (!peerConnectionRef.current) {
+      peerConnectionRef.current = createPeerConnection();
+      
+      try {
+        const offer = await peerConnectionRef.current.createOffer();
+        await peerConnectionRef.current.setLocalDescription(offer);
+        
+        console.log('Sending offer to:', data.userName);
+        socketRef.current.emit('offer', {
+          sessionId,
+          offer,
+          targetUserId: data.userId
+        });
+      } catch (error) {
+        console.error('Failed to create offer:', error);
+      }
+    }
+  };
+
+  const handleOffer = async (data) => {
+    console.log('Received offer from:', data);
+    
+    if (!peerConnectionRef.current) {
+      peerConnectionRef.current = createPeerConnection();
+    }
+    
+    try {
+      await peerConnectionRef.current.setRemoteDescription(data.offer);
+      const answer = await peerConnectionRef.current.createAnswer();
+      await peerConnectionRef.current.setLocalDescription(answer);
+      
+      console.log('Sending answer');
+      socketRef.current.emit('answer', {
+        sessionId,
+        answer,
+        targetUserId: data.fromUserId
+      });
+    } catch (error) {
+      console.error('Failed to handle offer:', error);
+    }
+  };
+
+  const handleAnswer = async (data) => {
+    try {
+      await peerConnectionRef.current.setRemoteDescription(data.answer);
+    } catch (error) {
+      console.error('Failed to handle answer:', error);
+    }
+  };
+
+  const handleIceCandidate = async (data) => {
+    try {
+      await peerConnectionRef.current.addIceCandidate(data.candidate);
+    } catch (error) {
+      console.error('Failed to handle ICE candidate:', error);
+    }
+  };
+
+  const handleUserLeft = () => {
+    setRemoteUser(null);
+    setIsConnected(false);
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+  };
+
+  const handleChatMessage = (data) => {
+    setChatMessages(prev => [...prev, {
+      id: Date.now(),
+      sender: data.userName,
+      message: data.message,
+      timestamp: new Date()
+    }]);
+  };
+
+  const toggleVideo = () => {
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoOn(videoTrack.enabled);
+        console.log('Video toggled:', videoTrack.enabled);
+      }
+    }
+  };
+
+  const toggleAudio = () => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioOn(audioTrack.enabled);
+        console.log('Audio toggled:', audioTrack.enabled);
+      }
+    }
+  };
+
+  const handleEndSession = async () => {
+    const confirmed = window.confirm('Are you sure you want to end this session?');
+    if (confirmed) {
+      try {
+        // Mark session as completed
+        await apiService.completeSession(sessionId);
+      } catch (error) {
+        console.error('Failed to complete session:', error);
+      }
+      
+      cleanup();
+      // Navigate to review page with session data
+      navigate('/session/review', { 
+        state: { 
+          sessionId,
+          partnerName: remoteUser?.userName || 'Partner',
+          sessionDuration: formatTime(sessionTime)
+        }
+      });
+    }
+  };
+
+  const handleSettings = () => {
+    // Toggle between different video qualities or show settings menu
+    const qualities = ['720p', '480p', '360p'];
+    const currentQuality = '720p'; // This could be state
+    alert(`Current video quality: ${currentQuality}\nClick OK to cycle through qualities`);
+  };
+
+  const cleanup = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+  };
   
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -41,16 +322,18 @@ const LiveSessionPage = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  const handleEndSession = () => {
-    const confirmed = window.confirm('Are you sure you want to end this session?');
-    if (confirmed) {
-      navigate('/session/review', { state: { session } });
-    }
-  };
-  
   const sendMessage = (e) => {
     e.preventDefault();
-    if (chatMessage.trim()) {
+    if (chatMessage.trim() && socketRef.current) {
+      const messageData = {
+        sessionId,
+        userId: user.id,
+        userName: user.name,
+        message: chatMessage.trim()
+      };
+      
+      socketRef.current.emit('video-chat-message', messageData);
+      
       setChatMessages(prev => [...prev, {
         id: Date.now(),
         sender: 'You',
@@ -67,11 +350,11 @@ const LiveSessionPage = () => {
       <div className="bg-gray-800 text-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Avatar src={otherParticipant.profilePicture} alt={otherParticipant.name} />
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
             <div>
-              <div className="font-semibold">{otherParticipant.name}</div>
+              <div className="font-semibold">{remoteUser?.userName || 'Waiting for participant...'}</div>
               <div className="text-sm text-gray-300">
-                {session.skill || 'Skill Exchange Session'}
+                {isConnected ? 'Video Connected' : 'In Session Room'}
               </div>
             </div>
           </div>
@@ -96,49 +379,44 @@ const LiveSessionPage = () => {
       <div className="flex-1 relative bg-black">
         <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
           {/* Remote Video */}
-          <div className="relative bg-gray-800 flex items-center justify-center">
-            {isVideoOn ? (
-              <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <Avatar src={otherParticipant.profilePicture} alt={otherParticipant.name} size="xl" />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center space-y-4 text-white">
-                <VideoCameraSlashIcon className="h-16 w-16 text-gray-400" />
-                <div className="text-center">
-                  <div className="font-semibold">{otherParticipant.name}</div>
-                  <div className="text-sm text-gray-400">Camera is off</div>
+          <div className="relative bg-gray-800">
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            {!isConnected && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                <div className="text-center text-white">
+                  <div className="text-4xl mb-4">👤</div>
+                  <div className="font-semibold">Waiting for participant...</div>
                 </div>
-              </div>
-            )}
-            
-            {/* Remote Audio Indicator */}
-            {!isAudioOn && (
-              <div className="absolute top-4 left-4 bg-red-500 rounded-full p-2">
-                <MicrophoneIcon className="h-4 w-4 text-white" />
               </div>
             )}
           </div>
 
           {/* Local Video */}
-          <div className="relative bg-gray-900 flex items-center justify-center lg:border-l border-gray-700">
-            {isVideoOn ? (
-              <div className="w-full h-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center">
-                <div className="text-white text-center">
-                  <div className="text-4xl mb-2">📹</div>
-                  <div className="text-sm">Your Camera</div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center space-y-4 text-white">
-                <VideoCameraSlashIcon className="h-16 w-16 text-gray-400" />
-                <div className="text-center">
-                  <div className="font-semibold">You</div>
-                  <div className="text-sm text-gray-400">Camera is off</div>
+          <div className="relative bg-gray-900 lg:border-l border-gray-700">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover scale-x-[-1] ${!isVideoOn ? 'hidden' : ''}`}
+            />
+            {(!isVideoOn || !localStreamRef.current) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                <div className="text-center text-white">
+                  <VideoCameraSlashIcon className="h-16 w-16 text-gray-400 mx-auto mb-2" />
+                  <div className="font-semibold">
+                    {!localStreamRef.current ? 'Camera Off' : 'Camera Off'}
+                  </div>
                 </div>
               </div>
             )}
             
-            {/* Local Audio Indicator */}
+            {/* Audio Indicator */}
             {!isAudioOn && (
               <div className="absolute top-4 right-4 bg-red-500 rounded-full p-2">
                 <XMarkIcon className="h-4 w-4 text-white" />
@@ -150,24 +428,28 @@ const LiveSessionPage = () => {
         {/* Controls Overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
           <div className="flex items-center justify-center space-x-4">
+            {/* Microphone Toggle */}
             <button
-              onClick={() => setIsAudioOn(!isAudioOn)}
+              onClick={toggleAudio}
               className={`p-4 rounded-full transition-colors ${
                 isAudioOn 
                   ? 'bg-gray-700 hover:bg-gray-600 text-white' 
                   : 'bg-red-500 hover:bg-red-600 text-white'
               }`}
+              title={isAudioOn ? 'Mute Microphone' : 'Unmute Microphone'}
             >
-              <MicrophoneIcon className="h-6 w-6" />
+              <MicrophoneIcon className={`h-6 w-6 ${!isAudioOn ? 'line-through' : ''}`} />
             </button>
 
+            {/* Video Toggle */}
             <button
-              onClick={() => setIsVideoOn(!isVideoOn)}
+              onClick={toggleVideo}
               className={`p-4 rounded-full transition-colors ${
                 isVideoOn 
                   ? 'bg-gray-700 hover:bg-gray-600 text-white' 
                   : 'bg-red-500 hover:bg-red-600 text-white'
               }`}
+              title={isVideoOn ? 'Turn Off Camera' : 'Turn On Camera'}
             >
               {isVideoOn ? (
                 <VideoCameraIcon className="h-6 w-6" />
@@ -176,20 +458,33 @@ const LiveSessionPage = () => {
               )}
             </button>
 
+            {/* Chat Toggle */}
             <button
               onClick={() => setShowChat(!showChat)}
-              className="p-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors"
+              className={`p-4 rounded-full transition-colors ${
+                showChat 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+              title={showChat ? 'Hide Chat' : 'Show Chat'}
             >
               <ChatBubbleLeftRightIcon className="h-6 w-6" />
             </button>
 
-            <button className="p-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors">
+            {/* Settings */}
+            <button 
+              onClick={handleSettings}
+              className="p-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors"
+              title="Settings"
+            >
               <Cog6ToothIcon className="h-6 w-6" />
             </button>
 
+            {/* End Call */}
             <button
               onClick={handleEndSession}
               className="p-4 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+              title="End Session"
             >
               <PhoneXMarkIcon className="h-6 w-6" />
             </button>
@@ -205,7 +500,8 @@ const LiveSessionPage = () => {
               <h3 className="font-semibold text-gray-900">Session Chat</h3>
               <button
                 onClick={() => setShowChat(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
+                title="Close Chat"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>

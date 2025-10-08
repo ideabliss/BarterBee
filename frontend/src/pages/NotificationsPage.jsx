@@ -9,10 +9,9 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 import { Card, Button, Badge, Avatar } from '../components/UI';
-import { mockNotifications, currentUser } from '../data/mockData';
 
 const NotificationsPage = () => {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all'); // all, unread, read
 
   const filteredNotifications = notifications.filter(notification => {

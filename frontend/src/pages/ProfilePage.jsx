@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
@@ -8,34 +8,65 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline';
 import { Card, Tabs, Avatar, Button, Badge, FloatingActionButton, Modal, Input, NotificationDot } from '../components/UI';
-import { currentUser, mockBarterRequests } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import EditProfileModal from '../components/modals/EditProfileModal';
+import AddSkillModal from '../components/modals/AddSkillModal';
+import AddItemModal from '../components/modals/AddItemModal';
+import CreatePollModal from '../components/modals/CreatePollModal';
+import apiService from '../services/api';
 
 const ProfilePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'skills';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [skills, setSkills] = useState([]);
+  const [items, setItems] = useState([]);
+  const [polls, setPolls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  const pendingRequests = mockBarterRequests.filter(req => 
-    req.to.id === currentUser.id && req.status === 'pending'
-  );
+  const pendingRequests = [];
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      const [skillsRes, itemsRes, pollsRes] = await Promise.all([
+        apiService.getUserSkills(),
+        apiService.getUserItems(),
+        apiService.getUserPolls()
+      ]);
+      setSkills(skillsRes.skills || []);
+      setItems(itemsRes.items || []);
+      setPolls(pollsRes.polls || []);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const tabs = [
     { 
       id: 'skills', 
       label: 'Skills', 
-      count: currentUser.skills.length 
+      count: skills.length 
     },
     { 
       id: 'things', 
       label: 'Things', 
-      count: currentUser.things.length 
+      count: items.length 
     },
     { 
       id: 'opinions', 
       label: 'Opinions', 
-      count: currentUser.opinions.length 
+      count: polls.length 
     }
   ];
 
@@ -71,10 +102,13 @@ const ProfilePage = () => {
                   size="sm"
                   variant="danger"
                   icon={<TrashIcon className="h-4 w-4" />}
-                  onClick={() => {
-                    // TODO: Replace with actual API call to backend
-                    // Example: await profileAPI.deleteSkill(skill.id);
-                    console.log('Delete skill (needs backend implementation):', skill.id);
+                  onClick={async () => {
+                    try {
+                      await apiService.deleteSkill(skill.id);
+                      loadUserData();
+                    } catch (error) {
+                      console.error('Failed to delete skill:', error);
+                    }
                   }}
                 />
               </div>
@@ -116,8 +150,8 @@ const ProfilePage = () => {
               <h3 className="text-lg font-semibold text-gray-900">{thing.name}</h3>
               <p className="text-sm text-gray-600 mt-1">{thing.description}</p>
               <div className="flex items-center space-x-2 mt-2">
-                <Badge variant="success" className={thing.available ? '' : 'bg-gray-100 text-gray-600'}>
-                  {thing.available ? 'Available' : 'Not Available'}
+                <Badge variant="success" className={thing.is_available ? '' : 'bg-gray-100 text-gray-600'}>
+                  {thing.is_available ? 'Available' : 'Not Available'}
                 </Badge>
                 <Badge variant="default">{thing.category}</Badge>
               </div>
@@ -134,10 +168,13 @@ const ProfilePage = () => {
                   size="sm"
                   variant="danger"
                   icon={<TrashIcon className="h-4 w-4" />}
-                  onClick={() => {
-                    // TODO: Replace with actual API call to backend
-                    // Example: await profileAPI.deleteThing(thing.id);
-                    console.log('Delete thing (needs backend implementation):', thing.id);
+                  onClick={async () => {
+                    try {
+                      await apiService.deleteItem(thing.id);
+                      loadUserData();
+                    } catch (error) {
+                      console.error('Failed to delete item:', error);
+                    }
                   }}
                 />
               </div>
@@ -165,189 +202,118 @@ const ProfilePage = () => {
     </Card>
   );
 
-  const OpinionCard = ({ opinion, showActions = true }) => (
-    <Card className="p-6 group">
-      <div className="flex items-start justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{opinion.question}</h3>
-        {showActions && (
-          <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              size="sm"
-              variant="outline"
-              icon={<PencilIcon className="h-4 w-4" />}
-              onClick={() => {
-                // TODO: Replace with actual API call to backend
-                // Example: await profileAPI.editOpinion(opinion.id);
-                console.log('Edit opinion (needs backend implementation):', opinion.id);
-              }}
-            />
-            <Button
-              size="sm"
-              variant="danger"
-              icon={<TrashIcon className="h-4 w-4" />}
-              onClick={() => {
-                // TODO: Replace with actual API call to backend
-                // Example: await profileAPI.deleteOpinion(opinion.id);
-                console.log('Delete opinion (needs backend implementation):', opinion.id);
-              }}
-            />
-          </div>
-        )}
-      </div>
-      
-      <div className="space-y-3">
-        {opinion.type === 'text' ? (
-          opinion.options.map((option, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-700">{option}</span>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">{opinion.votes[index]}</span>
-                <div className="w-16 h-2 bg-gray-200 rounded-full">
-                  <div 
-                    className="h-full bg-blue-500 rounded-full" 
-                    style={{ width: `${(opinion.votes[index] / opinion.totalVotes) * 100}%` }}
-                  />
-                </div>
-              </div>
+  const OpinionCard = ({ opinion, showActions = true }) => {
+    const options = Array.isArray(opinion.options) ? opinion.options : JSON.parse(opinion.options || '[]');
+    const votes = Array.isArray(opinion.votes) ? opinion.votes : JSON.parse(opinion.votes || '[]');
+    const totalVotes = votes.reduce((sum, count) => sum + count, 0);
+    
+    return (
+      <Card className="p-6 group">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">{opinion.question}</h3>
+          {showActions && (
+            <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                size="sm"
+                variant="danger"
+                icon={<TrashIcon className="h-4 w-4" />}
+                onClick={async () => {
+                  try {
+                    // TODO: Add delete poll API endpoint
+                    console.log('Delete poll:', opinion.id);
+                  } catch (error) {
+                    console.error('Failed to delete poll:', error);
+                  }
+                }}
+              />
             </div>
-          ))
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {opinion.options.map((option, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-3">
-                <img 
-                  src={option.image} 
-                  alt={option.text}
-                  className="w-full h-24 object-cover rounded mb-2"
-                />
-                <div className="text-sm font-medium text-gray-900">{option.text}</div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-sm text-gray-600">{opinion.votes[index]} votes</span>
-                  <div className="w-12 h-2 bg-gray-200 rounded-full">
+          )}
+        </div>
+        
+        <div className="space-y-3">
+          {opinion.poll_type === 'text' ? (
+            options.map((option, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-700">{option}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">{votes[index] || 0}</span>
+                  <div className="w-16 h-2 bg-gray-200 rounded-full">
                     <div 
                       className="h-full bg-blue-500 rounded-full" 
-                      style={{ width: `${(opinion.votes[index] / opinion.totalVotes) * 100}%` }}
+                      style={{ width: totalVotes > 0 ? `${((votes[index] || 0) / totalVotes) * 100}%` : '0%' }}
                     />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-        <span>{opinion.totalVotes} total votes</span>
-        <Badge variant="success">Active</Badge>
-      </div>
-    </Card>
-  );
-
-  const AddItemModal = () => {
-    const [formData, setFormData] = useState({
-      name: '',
-      description: '',
-      category: '',
-      image: ''
-    });
-
-    return (
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title={`Add New ${activeTab.slice(0, -1)}`}
-        maxWidth="max-w-lg"
-      >
-        <form className="space-y-4">
-          <Input
-            label="Name"
-            placeholder={`Enter ${activeTab.slice(0, -1)} name`}
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          />
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Describe your skill/item/question"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            />
-          </div>
-          
-          <Input
-            label="Category"
-            placeholder="e.g., Technology, Creative, Books"
-            value={formData.category}
-            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-          />
-          
-          <Input
-            label="Image URL"
-            placeholder="https://example.com/image.jpg"
-            value={formData.image}
-            onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-          />
-          
-          <div className="flex space-x-3 pt-4">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setIsAddModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={() => {
-                // TODO: Replace with actual API call to backend
-                // Example: await profileAPI.addItem(activeTab, formData);
-                console.log(`Add ${activeTab.slice(0, -1)} (needs backend implementation):`, formData);
-                setIsAddModalOpen(false);
-              }}
-            >
-              Add {activeTab.slice(0, -1)}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+            ))
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {options.map((option, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-3">
+                  <img 
+                    src={option.image} 
+                    alt={option.text}
+                    className="w-full h-24 object-cover rounded mb-2"
+                  />
+                  <div className="text-sm font-medium text-gray-900">{option.text}</div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-sm text-gray-600">{votes[index] || 0} votes</span>
+                    <div className="w-12 h-2 bg-gray-200 rounded-full">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full" 
+                        style={{ width: totalVotes > 0 ? `${((votes[index] || 0) / totalVotes) * 100}%` : '0%' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <span>{totalVotes} total votes</span>
+          <Badge variant="success">Active</Badge>
+        </div>
+      </Card>
     );
   };
+
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Profile Header */}
       <Card className="p-8 mb-8">
         <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
-          <Avatar src={currentUser.profilePicture} alt={currentUser.name} size="xl" />
+          <Avatar src={user?.profile_picture} alt={user?.name} size="xl" />
           
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-bold text-gray-900">{currentUser.name}</h1>
-            <p className="text-lg text-gray-600">@{currentUser.username}</p>
-            <p className="text-sm text-gray-500 mt-2">{currentUser.address}</p>
+            <h1 className="text-3xl font-bold text-gray-900">{user?.name}</h1>
+            <p className="text-lg text-gray-600">@{user?.username}</p>
+            <p className="text-sm text-gray-500 mt-2">{user?.address}</p>
             
             <div className="flex items-center justify-center md:justify-start space-x-6 mt-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{currentUser.skills.length}</div>
+                <div className="text-2xl font-bold text-blue-600">{skills.length}</div>
                 <div className="text-sm text-gray-600">Skills</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{currentUser.things.length}</div>
+                <div className="text-2xl font-bold text-green-600">{items.length}</div>
                 <div className="text-sm text-gray-600">Things</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{currentUser.points}</div>
+                <div className="text-2xl font-bold text-purple-600">{user?.points || 0}</div>
                 <div className="text-sm text-gray-600">Points</div>
               </div>
             </div>
           </div>
           
-          <Button variant="outline" className="self-start">
+          <Button 
+            variant="outline" 
+            className="self-start"
+            onClick={() => setIsEditProfileOpen(true)}
+          >
             Edit Profile
           </Button>
         </div>
@@ -360,76 +326,85 @@ const ProfilePage = () => {
 
       {/* Content */}
       <div className="space-y-6">
-        {activeTab === 'skills' && (
+        {loading ? (
+          <Card className="p-12 text-center">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-gray-600">Loading...</p>
+          </Card>
+        ) : (
           <>
-            {currentUser.skills.length > 0 ? (
-              currentUser.skills.map(skill => (
-                <SkillCard key={skill.id} skill={skill} />
-              ))
-            ) : (
-              <Card className="p-12 text-center">
-                <div className="text-6xl mb-4">🎯</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Skills Added Yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Start by adding skills you can teach others in exchange for learning new ones.
-                </p>
-                <Button onClick={() => setIsAddModalOpen(true)}>
-                  Add Your First Skill
-                </Button>
-              </Card>
-            )}
-          </>
-        )}
-
-        {activeTab === 'things' && (
-          <>
-            {currentUser.things.length > 0 ? (
-              currentUser.things.map(thing => (
-                <ThingCard key={thing.id} thing={thing} />
-              ))
-            ) : (
-              <Card className="p-12 text-center">
-                <div className="text-6xl mb-4">📦</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Items Added Yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Share items you own that others might need temporarily.
-                </p>
-                <Button onClick={() => setIsAddModalOpen(true)}>
-                  Add Your First Item
-                </Button>
-              </Card>
-            )}
-          </>
-        )}
-
-        {activeTab === 'opinions' && (
-          <>
-            {currentUser.opinions.length > 0 ? (
-              currentUser.opinions.map(opinion => (
-                <OpinionCard key={opinion.id} opinion={opinion} />
-              ))
-            ) : (
-              <Card className="p-12 text-center">
-                <div className="text-6xl mb-4">🤔</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Polls Created Yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Create polls to get help making decisions. You need at least 3 points to create your first poll.
-                </p>
-                {currentUser.points >= 3 ? (
+            {activeTab === 'skills' && (
+              skills.length > 0 ? (
+                <div className="grid gap-6">
+                  {skills.map(skill => (
+                    <SkillCard key={skill.id} skill={skill} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-12 text-center">
+                  <div className="text-6xl mb-4">🎯</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Skills Added Yet</h3>
+                  <p className="text-gray-600 mb-4">
+                    Start by adding skills you can teach others in exchange for learning new ones.
+                  </p>
                   <Button onClick={() => setIsAddModalOpen(true)}>
-                    Create Your First Poll
+                    Add Your First Skill
                   </Button>
-                ) : (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">
-                      You have {currentUser.points} points. Answer more polls to earn points!
-                    </p>
-                    <Button variant="outline" onClick={() => window.location.href = '/polls'}>
-                      Answer Polls to Earn Points
+                </Card>
+              )
+            )}
+
+            {activeTab === 'things' && (
+              items.length > 0 ? (
+                <div className="grid gap-6">
+                  {items.map(item => (
+                    <ThingCard key={item.id} thing={item} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-12 text-center">
+                  <div className="text-6xl mb-4">📦</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Items Added Yet</h3>
+                  <p className="text-gray-600 mb-4">
+                    Share items you own that others might need temporarily.
+                  </p>
+                  <Button onClick={() => setIsAddModalOpen(true)}>
+                    Add Your First Item
+                  </Button>
+                </Card>
+              )
+            )}
+
+            {activeTab === 'opinions' && (
+              polls.length > 0 ? (
+                <div className="grid gap-6">
+                  {polls.map(poll => (
+                    <OpinionCard key={poll.id} opinion={poll} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-12 text-center">
+                  <div className="text-6xl mb-4">🤔</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Polls Created Yet</h3>
+                  <p className="text-gray-600 mb-4">
+                    Create polls to get help making decisions. You need at least 3 points to create your first poll.
+                  </p>
+                  {(user?.points || 0) >= 3 ? (
+                    <Button onClick={() => setIsAddModalOpen(true)}>
+                      Create Your First Poll
                     </Button>
-                  </div>
-                )}
-              </Card>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-2">
+                        You have {user?.points || 0} points. Answer more polls to earn points!
+                      </p>
+                      <Button variant="outline" onClick={() => window.location.href = '/polls'}>
+                        Answer Polls to Earn Points
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              )
             )}
           </>
         )}
@@ -441,8 +416,36 @@ const ProfilePage = () => {
         icon={<PlusIcon className="h-6 w-6" />}
       />
 
-      {/* Add Item Modal */}
-      <AddItemModal />
+      {/* Add Modals */}
+      {activeTab === 'skills' && (
+        <AddSkillModal 
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={loadUserData}
+        />
+      )}
+      
+      {activeTab === 'things' && (
+        <AddItemModal 
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={loadUserData}
+        />
+      )}
+      
+      {activeTab === 'opinions' && (
+        <CreatePollModal 
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={loadUserData}
+        />
+      )}
+      
+      {/* Edit Profile Modal */}
+      <EditProfileModal 
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
     </div>
   );
 };

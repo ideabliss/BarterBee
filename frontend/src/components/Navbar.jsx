@@ -7,13 +7,14 @@ import {
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { Avatar, NotificationDot } from './UI';
-import { currentUser, mockNotifications } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   
-  const unreadNotifications = mockNotifications.filter(n => !n.read).length;
+  const unreadNotifications = 0;
   
   const navigation = [
     { name: 'Home', href: '/', icon: HomeIcon },
@@ -22,7 +23,7 @@ const Navbar = () => {
   ];
   
   const handleLogout = () => {
-    // In a real app, this would clear auth tokens
+    logout();
     navigate('/login');
   };
   
@@ -76,10 +77,10 @@ const Navbar = () => {
           {/* User Menu */}
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 transition-all duration-300 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md">
-              <Avatar src={currentUser.profilePicture} alt={currentUser.name} size="sm" />
+              <Avatar src={user?.profile_picture} alt={user?.name} size="sm" />
               <div className="text-sm">
-                <div className="font-semibold text-gray-900">{currentUser.name}</div>
-                <div className="text-gray-500 font-medium">@{currentUser.username}</div>
+                <div className="font-semibold text-gray-900">{user?.name || 'User'}</div>
+                <div className="text-gray-500 font-medium">@{user?.username || 'username'}</div>
               </div>
             </div>
             
