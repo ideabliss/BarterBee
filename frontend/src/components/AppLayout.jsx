@@ -13,9 +13,11 @@ import {
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
+import ProfileModal from './modals/ProfileModal';
 
 const AppLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -143,7 +145,7 @@ const AppLayout = ({ children }) => {
           </button>
           
           <button 
-            onClick={() => navigate('/profile')}
+            onClick={() => setShowProfileModal(true)}
             className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100"
           >
             <img src={user?.profile_picture} alt="" className="w-8 h-8 rounded-full" />
@@ -156,6 +158,11 @@ const AppLayout = ({ children }) => {
           {children}
         </main>
       </div>
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </div>
   );
 };

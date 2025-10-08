@@ -204,20 +204,13 @@ const OpinionBarterPage = () => {
             <Button 
               onClick={() => setShowCreateModal(true)} 
               className="flex items-center gap-2 w-full sm:w-auto"
-              disabled={(user?.points || 0) < 3}
             >
               <PlusIcon className="w-4 h-4" />
-              Create Poll (3 points)
+              Create Poll
             </Button>
           </div>
 
-          {(user?.points || 0) < 3 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800">
-                You need at least 3 points to create a poll. Answer more polls to earn points!
-              </p>
-            </div>
-          )}
+
           
           {userPolls.length > 0 ? (
             <div className="space-y-6">
@@ -287,11 +280,7 @@ const OpinionBarterPage = () => {
               <div className="text-6xl mb-4">🤔</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Polls Created Yet</h3>
               <p className="text-gray-600 mb-4">Create polls to get help making decisions. You need at least 3 points to create your first poll.</p>
-              {(user?.points || 0) >= 3 ? (
-                <Button onClick={() => setShowCreateModal(true)}>Create Your First Poll</Button>
-              ) : (
-                <Button variant="outline" onClick={() => setActiveTab('answer')}>Answer Polls to Earn Points</Button>
-              )}
+              <Button onClick={() => setShowCreateModal(true)}>Create Your First Poll</Button>
             </div>
           )}
         </div>

@@ -199,16 +199,32 @@ const ItemBarterPage = () => {
                       <img src={item.users?.profile_picture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'} alt={item.users?.name || 'User'} className="w-8 h-8 rounded-full" />
                       <span className="text-sm text-gray-600">{item.users?.name || 'Unknown User'}</span>
                     </div>
-                    <Button 
-                      className="w-full" 
-                      disabled={!item.is_available}
-                      onClick={() => {
-                        setSelectedItemForRequest(item);
-                        setShowBarterRequestModal(true);
-                      }}
-                    >
-                      {item.is_available ? 'Send Request' : 'Not Available'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedItemForView({
+                            ...item.users,
+                            user: item.users
+                          });
+                          setShowViewModal(true);
+                        }}
+                      >
+                        View Profile
+                      </Button>
+                      <Button 
+                        className="flex-1" 
+                        disabled={!item.is_available}
+                        onClick={() => {
+                          setSelectedItemForRequest(item);
+                          setShowBarterRequestModal(true);
+                        }}
+                      >
+                        {item.is_available ? 'Send Request' : 'Not Available'}
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))}
