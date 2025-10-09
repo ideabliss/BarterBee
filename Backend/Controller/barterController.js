@@ -4,7 +4,7 @@ const barterController = {
   // Create barter request
   createRequest: async (req, res) => {
     try {
-      const { type, to_user_id, from_skill_id, to_skill_id, from_item_id, to_item_id, message, barter_period, preferred_date, preferred_time } = req.body;
+      const { type, to_user_id, from_skill_id, to_skill_id, from_item_id, to_item_id, message, barter_period, number_of_sessions } = req.body;
       
       const insertData = {
         type,
@@ -16,8 +16,7 @@ const barterController = {
       // Add skill-specific fields
       if (from_skill_id) insertData.from_skill_id = from_skill_id;
       if (to_skill_id) insertData.to_skill_id = to_skill_id;
-      if (preferred_date) insertData.preferred_date = preferred_date;
-      if (preferred_time) insertData.preferred_time = preferred_time;
+      if (number_of_sessions) insertData.number_of_sessions = number_of_sessions;
       
       // Add item-specific fields
       if (from_item_id) insertData.from_item_id = from_item_id;

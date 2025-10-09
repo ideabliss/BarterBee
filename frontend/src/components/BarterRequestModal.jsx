@@ -6,7 +6,7 @@ import apiService from '../services/api';
 const BarterRequestModal = ({ isOpen, onClose, selectedSkill, onSubmit }) => {
   const [selectedMySkill, setSelectedMySkill] = useState('');
   const [message, setMessage] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
+
   const [numberOfSessions, setNumberOfSessions] = useState(1);
   const [userSkills, setUserSkills] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,12 +38,12 @@ const BarterRequestModal = ({ isOpen, onClose, selectedSkill, onSubmit }) => {
       await onSubmit({
         from_skill_id: selectedMySkill,
         message,
-        preferred_date: scheduledDate,
+
         number_of_sessions: numberOfSessions
       });
       setSelectedMySkill('');
       setMessage('');
-      setScheduledDate('');
+
       setNumberOfSessions(1);
     } catch (error) {
       console.error('Failed to submit barter request:', error);
@@ -98,19 +98,7 @@ const BarterRequestModal = ({ isOpen, onClose, selectedSkill, onSubmit }) => {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Preferred Session Date
-          </label>
-          <input
-            type="date"
-            value={scheduledDate}
-            onChange={(e) => setScheduledDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            min={new Date().toISOString().split('T')[0]}
-            required
-          />
-        </div>
+
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
