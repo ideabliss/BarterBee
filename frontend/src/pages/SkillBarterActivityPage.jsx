@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -18,13 +18,17 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { Card, Input, Button, Badge, Avatar, Modal } from '../components/UI';
-import { currentUser, mockUsers } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import apiService from '../services/api';
 
 const SkillBarterActivityPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // Modal states
   const [selectSkillModalOpen, setSelectSkillModalOpen] = useState(false);
@@ -40,6 +44,24 @@ const SkillBarterActivityPage = () => {
   const [reviewText, setReviewText] = useState('');
   const [rating, setRating] = useState(0);
   const [reportText, setReportText] = useState('');
+
+  // Load activities from API
+  useEffect(() => {
+    loadActivities();
+  }, []);
+
+  const loadActivities = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getBarterActivity();
+      console.log('📊 Loaded activities:', response);
+      setActivities(response.activities || []);
+    } catch (error) {
+      console.error('Failed to load activities:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Mock activities data
   const mockActivities = [
@@ -114,12 +136,17 @@ const SkillBarterActivityPage = () => {
     }
   ];
 
-  const filteredActivities = mockActivities.filter(activity => {
+  const filteredActivities = activities.filter(activity => {
+    const fromSkillName = activity.from_skill?.name || '';
+    const toSkillName = activity.to_skill?.name || '';
+    const fromUserName = activity.from_user?.name || '';
+    const toUserName = activity.to_user?.name || '';
+    
     const matchesSearch = 
-      activity.requestedSkill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.offeredSkill?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.requester.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.provider.name.toLowerCase().includes(searchTerm.toLowerCase());
+      fromSkillName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      toSkillName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fromUserName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      toUserName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || activity.status === statusFilter;
     
@@ -174,10 +201,39 @@ const SkillBarterActivityPage = () => {
     setSelectedBarterSkill(null);
   };
 
-  const handleUpdateSession = () => {
-    console.log('Updating session:', { sessionDate, sessionTime });
-    // TODO: API call to update session
-    setUpdateSessionModalOpen(false);
+  const handleUpdateSession = async () => {
+    if (!sessionDate || !sessionTime) {
+      alert('Please select both date and time');
+      return;
+    }
+
+    if (!selectedActivity?.id) {
+      alert('Error: Activity ID is missing');
+      return;
+    }
+
+    try {
+      console.log('📅 Scheduling session:', {
+        barter_request_id: selectedActivity.id,
+        scheduled_date: sessionDate,
+        scheduled_time: sessionTime
+      });
+
+      await apiService.scheduleSession({
+        barter_request_id: selectedActivity.id,
+        scheduled_date: sessionDate,
+        scheduled_time: sessionTime,
+        duration_minutes: 60,
+        session_notes: ''
+      });
+
+      alert('Session scheduled successfully!');
+      setUpdateSessionModalOpen(false);
+      loadActivities(); // Reload activities
+    } catch (error) {
+      console.error('Failed to schedule session:', error);
+      alert('Failed to schedule session: ' + (error.message || 'Please try again'));
+    }
   };
 
   const handleSubmitReview = () => {
@@ -200,7 +256,15 @@ const SkillBarterActivityPage = () => {
   const ActivityCard = ({ activity }) => {
     const statusConfig = getStatusConfig(activity.status);
     const StatusIcon = statusConfig.icon;
-    const otherUser = activity.isIncoming ? activity.requester : activity.provider;
+    
+    // Determine if this is an incoming or outgoing request
+    const isIncoming = activity.to_user_id === user?.id;
+    const otherUser = isIncoming ? activity.from_user : activity.to_user;
+    const mySkill = isIncoming ? activity.to_skill : activity.from_skill;
+    const theirSkill = isIncoming ? activity.from_skill : activity.to_skill;
+    
+    // Get the first session if it exists
+    const nextSession = activity.sessions?.[0];
 
     return (
       <Card className={`p-6 hover:shadow-2xl transition-all duration-300 border-l-4 ${statusConfig.borderColor} group`}>
@@ -208,14 +272,13 @@ const SkillBarterActivityPage = () => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
-              <span className="text-2xl">{activity.requestedSkill.emoji}</span>
-              <h3 className="text-lg font-bold text-gray-900">{activity.requestedSkill.name}</h3>
+              <span className="text-2xl">🎯</span>
+              <h3 className="text-lg font-bold text-gray-900">{theirSkill?.name || 'Skill Exchange'}</h3>
             </div>
-            {activity.offeredSkill && (
+            {mySkill && (
               <div className="flex items-center space-x-2 text-gray-600">
                 <ArrowsRightLeftIcon className="h-4 w-4" />
-                <span className="text-xl">{activity.offeredSkill.emoji}</span>
-                <span className="text-sm font-medium">{activity.offeredSkill.name}</span>
+                <span className="text-sm font-medium">{mySkill.name}</span>
               </div>
             )}
           </div>
@@ -228,10 +291,10 @@ const SkillBarterActivityPage = () => {
         {/* Participants */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
           <div className="flex items-center space-x-3">
-            <Avatar src={activity.requester.profilePicture} alt={activity.requester.name} size="md" />
+            <Avatar src={otherUser?.profile_picture} alt={otherUser?.name} size="md" />
             <div>
-              <div className="text-sm font-semibold text-gray-900">{activity.requester.name}</div>
-              <div className="text-xs text-gray-500">Requester</div>
+              <div className="text-sm font-semibold text-gray-900">{otherUser?.name}</div>
+              <div className="text-xs text-gray-500">{isIncoming ? 'Requester' : 'Provider'}</div>
             </div>
           </div>
           
@@ -239,19 +302,19 @@ const SkillBarterActivityPage = () => {
           
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <div className="text-sm font-semibold text-gray-900">{activity.provider.name}</div>
-              <div className="text-xs text-gray-500">Provider</div>
+              <div className="text-sm font-semibold text-gray-900">{user?.name}</div>
+              <div className="text-xs text-gray-500">You</div>
             </div>
-            <Avatar src={activity.provider.profilePicture} alt={activity.provider.name} size="md" />
+            <Avatar src={user?.profile_picture} alt={user?.name} size="md" />
           </div>
         </div>
 
         {/* Session Details */}
-        {activity.scheduledDate && (
+        {nextSession && (
           <div className="flex flex-wrap gap-4 mb-4 text-sm text-gray-600">
             <div className="flex items-center space-x-2">
               <CalendarIcon className="h-4 w-4 text-amber-500" />
-              <span>{new Date(activity.scheduledDate).toLocaleDateString('en-US', { 
+              <span>{new Date(nextSession.scheduled_date).toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
                 year: 'numeric' 
@@ -259,7 +322,7 @@ const SkillBarterActivityPage = () => {
             </div>
             <div className="flex items-center space-x-2">
               <ClockIcon className="h-4 w-4 text-amber-500" />
-              <span>{activity.scheduledTime}</span>
+              <span>{nextSession.scheduled_time}</span>
             </div>
           </div>
         )}
@@ -343,8 +406,8 @@ const SkillBarterActivityPage = () => {
                 className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
                 onClick={() => {
                   setSelectedActivity(activity);
-                  setSessionDate(activity.scheduledDate);
-                  setSessionTime(activity.scheduledTime);
+                  setSessionDate(nextSession?.scheduled_date || '');
+                  setSessionTime(nextSession?.scheduled_time || '');
                   setUpdateSessionModalOpen(true);
                 }}
               >
@@ -372,8 +435,8 @@ const SkillBarterActivityPage = () => {
                 variant="outline"
                 onClick={() => {
                   setSelectedActivity(activity);
-                  setSessionDate(activity.scheduledDate);
-                  setSessionTime(activity.scheduledTime);
+                  setSessionDate(nextSession?.scheduled_date || '');
+                  setSessionTime(nextSession?.scheduled_time || '');
                   setUpdateSessionModalOpen(true);
                 }}
               >
