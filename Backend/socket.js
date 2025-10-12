@@ -5,8 +5,15 @@ let io;
 const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173",
-      methods: ["GET", "POST"]
+      origin: [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://barter-bee.vercel.app",
+        "https://barterbee.vercel.app",
+        /\.vercel\.app$/  // Allow all Vercel preview deployments
+      ],
+      methods: ["GET", "POST"],
+      credentials: true
     }
   });
 
@@ -26,22 +33,45 @@ const initializeSocket = (server) => {
     // Video call functionality
     socket.on('join-video-room', (data) => {
       const { sessionId, userId, userName } = data;
-      socket.join(`video-${sessionId}`);
+      const roomName = `video-${sessionId}`;
+      
+      // Get existing room members before joining
+      const room = io.sockets.adapter.rooms.get(roomName);
+      const existingMembers = room ? Array.from(room) : [];
+      
+      console.log(`👤 User ${userName} (${socket.id}) joining video room: ${sessionId}`);
+      console.log(`👥 Existing members in room:`, existingMembers.length);
+      
+      // Join the room
+      socket.join(roomName);
       socket.userId = userId;
       socket.userName = userName;
+      socket.sessionId = sessionId;
       
-      console.log(`User ${userName} (${socket.id}) joined video room: ${sessionId}`);
-      
-      // Notify other users in the room
-      socket.to(`video-${sessionId}`).emit('user-joined', {
+      // Notify existing users about the new user
+      socket.to(roomName).emit('user-joined', {
         userId,
         userName,
         socketId: socket.id
       });
+      console.log(`📤 Notified ${existingMembers.length} existing users about ${userName} joining`);
+      
+      // Send existing members to the new user
+      existingMembers.forEach(memberId => {
+        const memberSocket = io.sockets.sockets.get(memberId);
+        if (memberSocket && memberSocket.userId) {
+          console.log(`📤 Notifying ${userName} about existing user ${memberSocket.userName}`);
+          socket.emit('user-joined', {
+            userId: memberSocket.userId,
+            userName: memberSocket.userName,
+            socketId: memberId
+          });
+        }
+      });
     });
 
     socket.on('offer', (data) => {
-      console.log('Relaying offer from', socket.userName, 'to room', data.sessionId);
+      console.log(`📤 Relaying offer from ${socket.userName} to room video-${data.sessionId}`);
       socket.to(`video-${data.sessionId}`).emit('offer', {
         ...data,
         fromUserId: socket.userId,
@@ -50,7 +80,7 @@ const initializeSocket = (server) => {
     });
 
     socket.on('answer', (data) => {
-      console.log('Relaying answer from', socket.userName, 'to room', data.sessionId);
+      console.log(`📤 Relaying answer from ${socket.userName} to room video-${data.sessionId}`);
       socket.to(`video-${data.sessionId}`).emit('answer', {
         ...data,
         fromUserId: socket.userId,
@@ -59,6 +89,7 @@ const initializeSocket = (server) => {
     });
 
     socket.on('ice-candidate', (data) => {
+      console.log(`🧊 Relaying ICE candidate from ${socket.userName} to room video-${data.sessionId}`);
       socket.to(`video-${data.sessionId}`).emit('ice-candidate', data);
     });
 
@@ -75,12 +106,17 @@ const initializeSocket = (server) => {
     });
 
     socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
-      // Notify video rooms about disconnection
-      socket.broadcast.emit('user-left', {
-        userId: socket.userId,
-        userName: socket.userName
-      });
+      console.log('❌ User disconnected:', socket.id, socket.userName);
+      
+      // Notify the specific video room about disconnection
+      if (socket.sessionId) {
+        socket.to(`video-${socket.sessionId}`).emit('user-left', {
+          userId: socket.userId,
+          userName: socket.userName,
+          socketId: socket.id
+        });
+        console.log(`📤 Notified video room ${socket.sessionId} about ${socket.userName} leaving`);
+      }
     });
   });
 

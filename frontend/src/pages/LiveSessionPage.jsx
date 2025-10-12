@@ -73,10 +73,21 @@ const LiveSessionPage = () => {
       const socketUrl = import.meta.env.PROD 
         ? 'https://barterbee.onrender.com'
         : 'http://localhost:5000';
-      socketRef.current = io(socketUrl);
+      
+      console.log('🔌 Connecting to socket:', socketUrl);
+      console.log('🌐 Environment:', import.meta.env.PROD ? 'PRODUCTION' : 'DEVELOPMENT');
+      
+      socketRef.current = io(socketUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      });
       
       socketRef.current.on('connect', () => {
-        console.log('✅ Socket connected');
+        console.log('✅ Socket connected:', socketRef.current.id);
+        console.log('✅ Socket transport:', socketRef.current.io.engine.transport.name);
         setConnectionStatus('waiting');
         // Join video room after socket connects
         socketRef.current.emit('join-video-room', {
@@ -84,7 +95,20 @@ const LiveSessionPage = () => {
           userId: user?.id || 'anonymous',
           userName: user?.name || 'Anonymous User'
         });
-        console.log('📡 Joined video room:', sessionId);
+        console.log('📡 Joined video room:', sessionId, 'User:', user?.name);
+      });
+      
+      socketRef.current.on('connect_error', (error) => {
+        console.error('❌ Socket connection error:', error.message);
+        setPermissionError('Unable to connect to server: ' + error.message);
+      });
+      
+      socketRef.current.on('disconnect', (reason) => {
+        console.log('🔌 Socket disconnected:', reason);
+      });
+      
+      socketRef.current.on('reconnect', (attemptNumber) => {
+        console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
       });
       
       // Socket event listeners
