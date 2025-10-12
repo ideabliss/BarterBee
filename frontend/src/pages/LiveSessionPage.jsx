@@ -28,6 +28,9 @@ const LiveSessionPage = () => {
   const [remoteUser, setRemoteUser] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [cameraPermission, setCameraPermission] = useState('prompt');
+  const [micPermission, setMicPermission] = useState('prompt');
+  const [permissionError, setPermissionError] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // WebRTC refs
   const localVideoRef = useRef(null);
@@ -52,10 +55,17 @@ const LiveSessionPage = () => {
   const initializeVideoCall = async () => {
     try {
       console.log('Initializing video call...');
+      setIsInitializing(true);
+      setPermissionError(null);
       
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('getUserMedia is not supported in this browser');
+        throw new Error('Your browser does not support camera/microphone access. Please use Chrome, Firefox, Safari, or Edge.');
+      }
+
+      // Check if page is served over HTTPS (required for camera access)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        throw new Error('Camera access requires HTTPS. Please use https:// or localhost.');
       }
       
       // Initialize Socket.IO first (don't wait for camera)
@@ -82,37 +92,136 @@ const LiveSessionPage = () => {
       socketRef.current.on('user-left', handleUserLeft);
       socketRef.current.on('video-chat-message', handleChatMessage);
       
-      // Request camera access automatically
+      // Request camera and microphone access with detailed error handling
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
+        console.log('Requesting camera and microphone access...');
         
-        console.log('Got local stream:', stream);
-        console.log('Video tracks:', stream.getVideoTracks());
-        console.log('Audio tracks:', stream.getAudioTracks());
+        const constraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        console.log('✅ Got local stream:', stream);
+        console.log('Video tracks:', stream.getVideoTracks().map(t => ({
+          label: t.label,
+          enabled: t.enabled,
+          readyState: t.readyState
+        })));
+        console.log('Audio tracks:', stream.getAudioTracks().map(t => ({
+          label: t.label,
+          enabled: t.enabled,
+          readyState: t.readyState
+        })));
         
         localStreamRef.current = stream;
         
+        // Set permissions granted
+        if (stream.getVideoTracks().length > 0) {
+          setCameraPermission('granted');
+          setIsVideoOn(true);
+        } else {
+          setCameraPermission('denied');
+          setIsVideoOn(false);
+        }
+        
+        if (stream.getAudioTracks().length > 0) {
+          setMicPermission('granted');
+          setIsAudioOn(true);
+        } else {
+          setMicPermission('denied');
+          setIsAudioOn(false);
+        }
+        
+        // Attach stream to video element
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+          
+          // Add multiple event listeners for debugging
           localVideoRef.current.onloadedmetadata = () => {
-            localVideoRef.current.play().catch(e => console.error('Local video play failed:', e));
+            console.log('Video metadata loaded');
+            localVideoRef.current.play()
+              .then(() => console.log('✅ Local video playing'))
+              .catch(e => {
+                console.error('❌ Local video play failed:', e);
+                // Try to play again after user interaction
+                localVideoRef.current.muted = true;
+                localVideoRef.current.play().catch(err => console.error('Retry failed:', err));
+              });
+          };
+          
+          localVideoRef.current.onloadeddata = () => {
+            console.log('Video data loaded');
+          };
+          
+          localVideoRef.current.onplay = () => {
+            console.log('Video started playing');
           };
         }
         
-        console.log('Camera access granted');
+        console.log('✅ Camera and microphone access granted');
+        setIsInitializing(false);
         
       } catch (error) {
-        console.log('Camera access failed:', error);
+        console.error('❌ Camera/Microphone access failed:', error);
+        
+        // Detailed error messages
+        let errorMessage = 'Could not access camera/microphone. ';
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          errorMessage += 'Permission denied. Please allow camera and microphone access in your browser settings.';
+          setCameraPermission('denied');
+          setMicPermission('denied');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+          errorMessage += 'No camera or microphone found. Please connect a device and refresh.';
+          setCameraPermission('unavailable');
+          setMicPermission('unavailable');
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+          errorMessage += 'Camera/microphone is already in use by another application. Please close other apps and try again.';
+          setCameraPermission('blocked');
+          setMicPermission('blocked');
+        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+          errorMessage += 'Your camera does not meet the requirements. Trying with lower quality...';
+          // Try again with basic constraints
+          try {
+            const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStreamRef.current = basicStream;
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = basicStream;
+              localVideoRef.current.play().catch(e => console.error('Play failed:', e));
+            }
+            setCameraPermission('granted');
+            setMicPermission('granted');
+            setIsVideoOn(true);
+            setIsAudioOn(true);
+            setIsInitializing(false);
+            return;
+          } catch (retryError) {
+            errorMessage += ' Failed to initialize with basic settings.';
+          }
+        } else {
+          errorMessage += `Error: ${error.message}`;
+        }
+        
+        setPermissionError(errorMessage);
         setIsVideoOn(false);
         setIsAudioOn(false);
+        setIsInitializing(false);
       }
       
     } catch (error) {
       console.error('Failed to initialize video call:', error);
-      alert('Failed to initialize video call: ' + error.message);
+      setPermissionError('Failed to initialize video call: ' + error.message);
+      setIsInitializing(false);
     }
   };
 
@@ -263,7 +372,13 @@ const LiveSessionPage = () => {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoOn(videoTrack.enabled);
         console.log('Video toggled:', videoTrack.enabled);
+      } else {
+        // Try to re-request camera access
+        requestCameraAccess();
       }
+    } else {
+      // No stream, request access
+      requestCameraAccess();
     }
   };
 
@@ -274,7 +389,71 @@ const LiveSessionPage = () => {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioOn(audioTrack.enabled);
         console.log('Audio toggled:', audioTrack.enabled);
+      } else {
+        // Try to re-request microphone access
+        requestCameraAccess();
       }
+    } else {
+      // No stream, request access
+      requestCameraAccess();
+    }
+  };
+
+  const requestCameraAccess = async () => {
+    try {
+      setPermissionError(null);
+      console.log('Manually requesting camera/microphone access...');
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+      
+      // Stop old tracks if any
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      localStreamRef.current = stream;
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        localVideoRef.current.play().catch(e => console.error('Play failed:', e));
+      }
+      
+      setCameraPermission('granted');
+      setMicPermission('granted');
+      setIsVideoOn(true);
+      setIsAudioOn(true);
+      
+      console.log('✅ Camera/microphone access granted manually');
+      
+      // If peer connection exists, add new tracks
+      if (peerConnectionRef.current) {
+        const senders = peerConnectionRef.current.getSenders();
+        stream.getTracks().forEach(track => {
+          const sender = senders.find(s => s.track?.kind === track.kind);
+          if (sender) {
+            sender.replaceTrack(track);
+          } else {
+            peerConnectionRef.current.addTrack(track, stream);
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.error('Failed to get camera access:', error);
+      let errorMsg = 'Failed to access camera/microphone. ';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMsg += 'Please click the camera icon in your browser address bar and allow access.';
+      } else if (error.name === 'NotFoundError') {
+        errorMsg += 'No camera or microphone found.';
+      } else {
+        errorMsg += error.message;
+      }
+      
+      setPermissionError(errorMsg);
     }
   };
 
@@ -378,6 +557,41 @@ const LiveSessionPage = () => {
         </div>
       </div>
 
+      {/* Permission Error Banner */}
+      {permissionError && (
+        <div className="bg-yellow-600 text-white px-4 py-3 flex items-start justify-between">
+          <div className="flex-1">
+            <div className="font-semibold mb-1">⚠️ Camera/Microphone Access Issue</div>
+            <div className="text-sm">{permissionError}</div>
+            <button
+              onClick={requestCameraAccess}
+              className="mt-2 bg-yellow-700 hover:bg-yellow-800 px-4 py-2 rounded text-sm font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+          <button
+            onClick={() => setPermissionError(null)}
+            className="text-white hover:text-gray-200 ml-4"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
+      {/* Initializing Overlay */}
+      {isInitializing && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 text-center text-white max-w-md">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <div className="text-xl font-semibold mb-2">Initializing Video Call...</div>
+            <div className="text-sm text-gray-300">
+              Please allow camera and microphone access when prompted
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Video Area */}
       <div className="flex-1 relative bg-black">
         <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
@@ -410,11 +624,38 @@ const LiveSessionPage = () => {
             />
             {(!isVideoOn || !localStreamRef.current) && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                <div className="text-center text-white">
-                  <VideoCameraSlashIcon className="h-16 w-16 text-gray-400 mx-auto mb-2" />
-                  <div className="font-semibold">
-                    {!localStreamRef.current ? 'Camera Off' : 'Camera Off'}
-                  </div>
+                <div className="text-center text-white max-w-md px-4">
+                  <VideoCameraSlashIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <div className="font-semibold text-lg mb-2">Camera Off</div>
+                  {cameraPermission === 'denied' && (
+                    <div className="text-sm text-gray-300 mb-4">
+                      <p>Camera access was denied.</p>
+                      <p className="mt-2">To enable:</p>
+                      <ol className="text-left mt-2 space-y-1">
+                        <li>1. Click the 🔒 or 🎥 icon in your browser's address bar</li>
+                        <li>2. Change camera permission to "Allow"</li>
+                        <li>3. Refresh the page or click the camera button</li>
+                      </ol>
+                    </div>
+                  )}
+                  {cameraPermission === 'unavailable' && (
+                    <div className="text-sm text-gray-300">
+                      No camera detected. Please connect a camera device.
+                    </div>
+                  )}
+                  {cameraPermission === 'granted' && !isVideoOn && (
+                    <div className="text-sm text-gray-300">
+                      Camera is available but turned off. Click the camera button to turn it on.
+                    </div>
+                  )}
+                  {cameraPermission === 'prompt' && (
+                    <button
+                      onClick={requestCameraAccess}
+                      className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                    >
+                      Enable Camera
+                    </button>
+                  )}
                 </div>
               </div>
             )}
