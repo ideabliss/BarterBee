@@ -27,6 +27,7 @@ const LiveSessionPage = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [remoteUser, setRemoteUser] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('initializing'); // initializing, waiting, connecting, connected
   const [cameraPermission, setCameraPermission] = useState('prompt');
   const [micPermission, setMicPermission] = useState('prompt');
   const [permissionError, setPermissionError] = useState(null);
@@ -75,13 +76,15 @@ const LiveSessionPage = () => {
       socketRef.current = io(socketUrl);
       
       socketRef.current.on('connect', () => {
-        console.log('Socket connected');
+        console.log('✅ Socket connected');
+        setConnectionStatus('waiting');
         // Join video room after socket connects
         socketRef.current.emit('join-video-room', {
           sessionId,
           userId: user?.id || 'anonymous',
           userName: user?.name || 'Anonymous User'
         });
+        console.log('📡 Joined video room:', sessionId);
       });
       
       // Socket event listeners
@@ -274,30 +277,60 @@ const LiveSessionPage = () => {
     
     // Connection state logging
     peerConnection.onconnectionstatechange = () => {
-      console.log('Connection state:', peerConnection.connectionState);
+      console.log('🔗 Connection state:', peerConnection.connectionState);
+      if (peerConnection.connectionState === 'connected') {
+        setConnectionStatus('connected');
+        setIsConnected(true);
+      } else if (peerConnection.connectionState === 'connecting') {
+        setConnectionStatus('connecting');
+      } else if (peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'disconnected') {
+        setConnectionStatus('waiting');
+        setIsConnected(false);
+      }
     };
     
     peerConnection.oniceconnectionstatechange = () => {
-      console.log('ICE connection state:', peerConnection.iceConnectionState);
+      console.log('🧊 ICE connection state:', peerConnection.iceConnectionState);
     };
     
     return peerConnection;
   };
 
   const handleUserJoined = async (data) => {
-    console.log('User joined:', data);
+    console.log('👤 User joined:', data);
     setRemoteUser(data);
-    setIsConnected(true);
+    setConnectionStatus('connecting');
+    
+    // Wait for local stream to be ready before creating offer
+    const waitForStream = async () => {
+      let attempts = 0;
+      while (!localStreamRef.current && attempts < 50) {
+        console.log('⏳ Waiting for local stream...', attempts);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      return localStreamRef.current;
+    };
     
     // Only create offer if we don't already have a peer connection
     if (!peerConnectionRef.current) {
+      const stream = await waitForStream();
+      
+      if (!stream) {
+        console.error('❌ Local stream not available after waiting');
+        setPermissionError('Cannot start call - camera/microphone not ready');
+        setConnectionStatus('waiting');
+        return;
+      }
+      
+      console.log('✅ Local stream ready, creating peer connection');
       peerConnectionRef.current = createPeerConnection();
       
       try {
         const offer = await peerConnectionRef.current.createOffer();
         await peerConnectionRef.current.setLocalDescription(offer);
         
-        console.log('Sending offer to:', data.userName);
+        console.log('📤 Sending offer to:', data.userName);
         socketRef.current.emit('offer', {
           sessionId,
           offer,
@@ -305,14 +338,37 @@ const LiveSessionPage = () => {
         });
       } catch (error) {
         console.error('Failed to create offer:', error);
+        setConnectionStatus('waiting');
       }
     }
   };
 
   const handleOffer = async (data) => {
-    console.log('Received offer from:', data);
+    console.log('📥 Received offer from:', data.fromUserName);
+    setConnectionStatus('connecting');
+    
+    // Wait for local stream to be ready
+    const waitForStream = async () => {
+      let attempts = 0;
+      while (!localStreamRef.current && attempts < 50) {
+        console.log('⏳ Waiting for local stream before answering...', attempts);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      return localStreamRef.current;
+    };
+    
+    const stream = await waitForStream();
+    
+    if (!stream) {
+      console.error('❌ Local stream not available, cannot answer offer');
+      setPermissionError('Cannot join call - camera/microphone not ready');
+      setConnectionStatus('waiting');
+      return;
+    }
     
     if (!peerConnectionRef.current) {
+      console.log('✅ Local stream ready, creating peer connection for answer');
       peerConnectionRef.current = createPeerConnection();
     }
     
@@ -321,7 +377,7 @@ const LiveSessionPage = () => {
       const answer = await peerConnectionRef.current.createAnswer();
       await peerConnectionRef.current.setLocalDescription(answer);
       
-      console.log('Sending answer');
+      console.log('📤 Sending answer');
       socketRef.current.emit('answer', {
         sessionId,
         answer,
@@ -329,22 +385,35 @@ const LiveSessionPage = () => {
       });
     } catch (error) {
       console.error('Failed to handle offer:', error);
+      setConnectionStatus('waiting');
     }
   };
 
   const handleAnswer = async (data) => {
+    console.log('📥 Received answer from:', data.fromUserName);
     try {
+      if (!peerConnectionRef.current) {
+        console.error('❌ No peer connection to handle answer');
+        return;
+      }
       await peerConnectionRef.current.setRemoteDescription(data.answer);
+      console.log('✅ Answer processed successfully');
     } catch (error) {
-      console.error('Failed to handle answer:', error);
+      console.error('❌ Failed to handle answer:', error);
     }
   };
 
   const handleIceCandidate = async (data) => {
+    console.log('🧊 Received ICE candidate');
     try {
+      if (!peerConnectionRef.current) {
+        console.error('❌ No peer connection to add ICE candidate');
+        return;
+      }
       await peerConnectionRef.current.addIceCandidate(data.candidate);
+      console.log('✅ ICE candidate added');
     } catch (error) {
-      console.error('Failed to handle ICE candidate:', error);
+      console.error('❌ Failed to handle ICE candidate:', error);
     }
   };
 
@@ -532,11 +601,19 @@ const LiveSessionPage = () => {
       <div className="bg-gray-800 text-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+            <div className={`w-3 h-3 rounded-full animate-pulse ${
+              connectionStatus === 'connected' ? 'bg-green-400' : 
+              connectionStatus === 'connecting' ? 'bg-yellow-400' : 
+              connectionStatus === 'waiting' ? 'bg-gray-400' : 
+              'bg-blue-400'
+            }`}></div>
             <div>
               <div className="font-semibold">{remoteUser?.userName || 'Waiting for participant...'}</div>
               <div className="text-sm text-gray-300">
-                {isConnected ? 'Video Connected' : 'In Session Room'}
+                {connectionStatus === 'connected' && '✅ Video Connected'}
+                {connectionStatus === 'connecting' && '🔄 Connecting...'}
+                {connectionStatus === 'waiting' && '⏳ Waiting for participant...'}
+                {connectionStatus === 'initializing' && '🚀 Initializing...'}
               </div>
             </div>
           </div>
