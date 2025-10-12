@@ -6,6 +6,26 @@ const sessionController = {
     try {
       const { barter_request_id, scheduled_date, scheduled_time, duration_minutes, session_notes } = req.body;
       
+      console.log('📅 Creating session with data:', {
+        barter_request_id,
+        scheduled_date,
+        scheduled_time,
+        duration_minutes,
+        session_notes,
+        userId: req.userId
+      });
+      
+      // Validate required fields
+      if (!barter_request_id) {
+        console.error('❌ Missing barter_request_id');
+        return res.status(400).json({ error: 'Barter request ID is required' });
+      }
+      
+      if (!scheduled_date || !scheduled_time) {
+        console.error('❌ Missing date or time');
+        return res.status(400).json({ error: 'Scheduled date and time are required' });
+      }
+      
       // Get barter request to check number_of_sessions
       const { data: barterRequest, error: requestError } = await supabase
         .from('barter_requests')
@@ -14,8 +34,12 @@ const sessionController = {
         .single();
       
       if (requestError) {
-        return res.status(400).json({ error: 'Barter request not found' });
+        console.error('❌ Barter request not found:', requestError);
+        return res.status(400).json({ error: 'Barter request not found: ' + requestError.message });
       }
+      
+      console.log('✅ Found barter request:', barterRequest);
+      console.log('✅ Found barter request:', barterRequest);
       
       // Count existing sessions
       const { data: existingSessions, error: countError } = await supabase
@@ -24,14 +48,20 @@ const sessionController = {
         .eq('barter_request_id', barter_request_id);
       
       if (countError) {
+        console.error('❌ Error counting sessions:', countError);
         return res.status(400).json({ error: countError.message });
       }
       
       const sessionCount = existingSessions?.length || 0;
       const maxSessions = barterRequest.number_of_sessions || 1;
       
+      console.log(`📊 Session count: ${sessionCount}/${maxSessions}`);
+      
       if (sessionCount >= maxSessions) {
-        return res.status(400).json({ error: 'Maximum sessions reached for this barter request' });
+        console.error('❌ Maximum sessions reached');
+        return res.status(400).json({ 
+          error: `Maximum sessions (${maxSessions}) already scheduled for this barter request. You have ${sessionCount} sessions.` 
+        });
       }
       
       const { data: session, error } = await supabase
@@ -48,17 +78,26 @@ const sessionController = {
         .single();
       
       if (error) {
+        console.error('❌ Error inserting session:', error);
         return res.status(400).json({ error: error.message });
       }
       
+      console.log('✅ Session created:', session);
+      
       // Update barter request status
-      await supabase
+      const { error: updateError } = await supabase
         .from('barter_requests')
         .update({ status: 'scheduled' })
         .eq('id', barter_request_id);
+        
+      if (updateError) {
+        console.error('⚠️ Warning: Could not update barter request status:', updateError);
+      }
       
+      console.log('✅ Session scheduled successfully');
       res.status(201).json({ message: 'Session scheduled successfully', session });
     } catch (error) {
+      console.error('💥 Session creation error:', error);
       res.status(500).json({ error: error.message });
     }
   },

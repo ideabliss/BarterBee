@@ -27,21 +27,52 @@ const ScheduleSessionModal = ({ isOpen, onClose, activity, onScheduled }) => {
       return;
     }
 
+    if (!activity?.requestId) {
+      console.error('Missing requestId in activity:', activity);
+      alert('Error: Barter request ID is missing. Please try again.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await apiService.scheduleSession({
-        barter_request_id: activity?.requestId,
+      console.log('Scheduling session with data:', {
+        barter_request_id: activity.requestId,
+        scheduled_date: formData.date,
+        scheduled_time: formData.time,
+        duration_minutes: parseInt(formData.duration),
+        session_notes: formData.notes
+      });
+
+      const response = await apiService.scheduleSession({
+        barter_request_id: activity.requestId,
         scheduled_date: formData.date,
         scheduled_time: formData.time,
         duration_minutes: parseInt(formData.duration),
         session_notes: formData.notes
       });
       
+      console.log('Session scheduled successfully:', response);
+      alert('Session scheduled successfully!');
       onScheduled?.();
       onClose();
     } catch (error) {
       console.error('Failed to schedule session:', error);
-      alert('Failed to schedule session. Please try again.');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        status: error.status
+      });
+      
+      let errorMessage = 'Failed to schedule session. ';
+      if (error.message) {
+        errorMessage += error.message;
+      } else if (error.response?.error) {
+        errorMessage += error.response.error;
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
