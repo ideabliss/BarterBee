@@ -27,8 +27,13 @@ const ScheduleSessionModal = ({ isOpen, onClose, activity, onScheduled }) => {
       return;
     }
 
-    if (!activity?.requestId) {
-      console.error('Missing requestId in activity:', activity);
+    // Check for requestId or id field
+    const barterId = activity?.requestId || activity?.id;
+    
+    if (!barterId) {
+      console.error('Missing barterId in activity:', activity);
+      console.error('activity.requestId:', activity?.requestId);
+      console.error('activity.id:', activity?.id);
       alert('Error: Barter request ID is missing. Please try again.');
       return;
     }
@@ -36,7 +41,7 @@ const ScheduleSessionModal = ({ isOpen, onClose, activity, onScheduled }) => {
     setLoading(true);
     try {
       console.log('Scheduling session with data:', {
-        barter_request_id: activity.requestId,
+        barter_request_id: barterId,
         scheduled_date: formData.date,
         scheduled_time: formData.time,
         duration_minutes: parseInt(formData.duration),
@@ -44,7 +49,7 @@ const ScheduleSessionModal = ({ isOpen, onClose, activity, onScheduled }) => {
       });
 
       const response = await apiService.scheduleSession({
-        barter_request_id: activity.requestId,
+        barter_request_id: barterId,
         scheduled_date: formData.date,
         scheduled_time: formData.time,
         duration_minutes: parseInt(formData.duration),

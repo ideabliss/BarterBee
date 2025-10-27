@@ -368,7 +368,10 @@ const SkillBarterActivityPage = () => {
                 size="sm"
                 className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
                 onClick={() => {
-                  setSelectedActivity(activity);
+                  setSelectedActivity({
+                    ...activity,
+                    requestId: activity.id // Add requestId field
+                  });
                   setSelectSkillModalOpen(true);
                 }}
               >
@@ -405,7 +408,10 @@ const SkillBarterActivityPage = () => {
                 size="sm"
                 className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
                 onClick={() => {
-                  setSelectedActivity(activity);
+                  setSelectedActivity({
+                    ...activity,
+                    requestId: activity.id // Add requestId field for the modal
+                  });
                   setSessionDate(nextSession?.scheduled_date || '');
                   setSessionTime(nextSession?.scheduled_time || '');
                   setUpdateSessionModalOpen(true);
@@ -423,7 +429,10 @@ const SkillBarterActivityPage = () => {
                 size="sm"
                 className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 text-white hover:from-yellow-600 hover:to-amber-600"
                 onClick={() => {
-                  setSelectedActivity(activity);
+                  setSelectedActivity({
+                    ...activity,
+                    requestId: activity.id // Add requestId field for the modal
+                  });
                   setVideoCallModalOpen(true);
                 }}
               >
@@ -434,7 +443,10 @@ const SkillBarterActivityPage = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  setSelectedActivity(activity);
+                  setSelectedActivity({
+                    ...activity,
+                    requestId: activity.id // Add requestId field for the modal
+                  });
                   setSessionDate(nextSession?.scheduled_date || '');
                   setSessionTime(nextSession?.scheduled_time || '');
                   setUpdateSessionModalOpen(true);
@@ -452,7 +464,10 @@ const SkillBarterActivityPage = () => {
                 size="sm"
                 className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700"
                 onClick={() => {
-                  setSelectedActivity(activity);
+                  setSelectedActivity({
+                    ...activity,
+                    requestId: activity.id // Add requestId field for consistency
+                  });
                   setReviewModalOpen(true);
                 }}
               >
@@ -464,7 +479,10 @@ const SkillBarterActivityPage = () => {
                 variant="outline"
                 className="border-red-300 text-red-600 hover:bg-red-50"
                 onClick={() => {
-                  setSelectedActivity(activity);
+                  setSelectedActivity({
+                    ...activity,
+                    requestId: activity.id // Add requestId field for consistency
+                  });
                   setReportModalOpen(true);
                 }}
               >
@@ -479,7 +497,10 @@ const SkillBarterActivityPage = () => {
               size="sm"
               className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700"
               onClick={() => {
-                setSelectedActivity(activity);
+                setSelectedActivity({
+                  ...activity,
+                  requestId: activity.id // Add requestId field for consistency
+                });
                 setReviewModalOpen(true);
               }}
             >
