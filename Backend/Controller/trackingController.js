@@ -73,23 +73,35 @@ const trackingController = {
       let updateData = { notes, updated_at: new Date().toISOString() };
       
       switch (status) {
-        case 'shipped':
+        case 'item_packed':
+          updateData.item_packed = true;
+          updateData.item_packed_date = new Date().toISOString();
+          break;
+        case 'dispatched':
           updateData.package_sent = true;
           updateData.package_sent_date = new Date().toISOString();
           if (tracking_number) updateData.tracking_number = tracking_number;
           break;
-        case 'delivered':
+        case 'received':
           updateData.package_delivered = true;
           updateData.package_delivered_date = new Date().toISOString();
+          updateData.exchange_started = true;
+          updateData.exchange_started_date = new Date().toISOString();
           break;
-        case 'return_shipped':
+        case 'return_packed':
+          updateData.return_packed = true;
+          updateData.return_packed_date = new Date().toISOString();
+          break;
+        case 'return_dispatched':
           updateData.return_sent = true;
           updateData.return_sent_date = new Date().toISOString();
           if (tracking_number) updateData.return_tracking_number = tracking_number;
           break;
-        case 'completed':
+        case 'return_received':
           updateData.return_delivered = true;
           updateData.return_delivered_date = new Date().toISOString();
+          updateData.exchange_completed = true;
+          updateData.exchange_completed_date = new Date().toISOString();
           break;
       }
       
@@ -105,9 +117,10 @@ const trackingController = {
       }
       
       // Update barter request status
-      let barterStatus = 'shipped';
-      if (status === 'delivered') barterStatus = 'ongoing';
-      if (status === 'completed') barterStatus = 'completed';
+      let barterStatus = 'accepted';
+      if (status === 'dispatched') barterStatus = 'shipped';
+      if (status === 'received') barterStatus = 'ongoing';
+      if (status === 'return_received') barterStatus = 'completed';
       
       await supabase
         .from('barter_requests')
@@ -138,31 +151,46 @@ const trackingController = {
       // Build timeline
       const timeline = [
         {
-          step: 'Package Sent',
+          step: 'Item Packed',
+          completed: tracking.item_packed,
+          date: tracking.item_packed_date
+        },
+        {
+          step: 'Item Dispatched',
           completed: tracking.package_sent,
           date: tracking.package_sent_date,
           tracking_number: tracking.tracking_number
         },
         {
-          step: 'In Transit',
-          completed: tracking.package_sent,
-          date: tracking.package_sent_date
-        },
-        {
-          step: 'Package Delivered',
+          step: 'Item Received',
           completed: tracking.package_delivered,
           date: tracking.package_delivered_date
         },
         {
-          step: 'Return Shipped',
+          step: 'Exchange Period',
+          completed: tracking.exchange_started,
+          date: tracking.exchange_started_date
+        },
+        {
+          step: 'Return Packed',
+          completed: tracking.return_packed,
+          date: tracking.return_packed_date
+        },
+        {
+          step: 'Return Dispatched',
           completed: tracking.return_sent,
           date: tracking.return_sent_date,
           tracking_number: tracking.return_tracking_number
         },
         {
-          step: 'Exchange Complete',
+          step: 'Return Received',
           completed: tracking.return_delivered,
           date: tracking.return_delivered_date
+        },
+        {
+          step: 'Exchange Complete',
+          completed: tracking.exchange_completed,
+          date: tracking.exchange_completed_date
         }
       ];
       

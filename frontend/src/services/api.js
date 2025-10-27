@@ -347,6 +347,10 @@ class ApiService {
     });
   }
 
+  async getTrackingTimeline(barterRequestId) {
+    return this.request(`/tracking/${barterRequestId}/timeline`);
+  }
+
   // Dashboard endpoints
   async getDashboardStats() {
     return this.request('/dashboard/stats');

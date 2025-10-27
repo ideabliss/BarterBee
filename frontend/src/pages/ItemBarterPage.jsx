@@ -338,16 +338,16 @@ const ItemBarterPage = () => {
                       <span>Barter Period: {request.barter_period || 14} days</span>
                     </div>
                     
-                    {request.status === 'accepted' && request.trackingInfo && (
+                    {(request.status === 'shipped' || request.status === 'ongoing') && (
                       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                         <h4 className="font-medium text-sm mb-2">Shipping Status</h4>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${request.trackingInfo.packageSent ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                            <div className={`w-2 h-2 rounded-full ${request.status === 'shipped' || request.status === 'ongoing' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                             Package Sent
                           </div>
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${request.trackingInfo.packageReceived ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                            <div className={`w-2 h-2 rounded-full ${request.status === 'ongoing' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                             Package Received
                           </div>
                         </div>
@@ -382,9 +382,41 @@ const ItemBarterPage = () => {
                       </div>
                     )}
                     {request.status === 'accepted' && (
-                      <Button size="sm" className="flex items-center gap-1 w-full md:w-auto">
+                      <Button 
+                        size="sm" 
+                        className="flex items-center gap-1 w-full md:w-auto"
+                        onClick={() => {
+                          setSelectedActivity({
+                            requestId: request.id,
+                            partnerName: request.from_user?.name || 'Unknown User',
+                            itemName: request.to_item?.name || request.from_item?.name || 'Item',
+                            barterPeriod: `${request.barter_period || 14} days`
+                          });
+                          setShowTrackingModal(true);
+                        }}
+                      >
                         <TruckIcon className="w-4 h-4" />
                         Add Tracking
+                      </Button>
+                    )}
+                    {(request.status === 'shipped' || request.status === 'ongoing') && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center gap-1 w-full md:w-auto"
+                        onClick={() => {
+                          setSelectedActivity({
+                            requestId: request.id,
+                            partnerName: request.from_user?.name || 'Unknown User',
+                            itemName: request.to_item?.name || request.from_item?.name || 'Item',
+                            barterPeriod: `${request.barter_period || 14} days`,
+                            status: request.status
+                          });
+                          setShowTrackingModal(true);
+                        }}
+                      >
+                        <TruckIcon className="w-4 h-4" />
+                        View Tracking
                       </Button>
                     )}
                   </div>
@@ -425,21 +457,43 @@ const ItemBarterPage = () => {
                       <Badge className={getStatusColor(activity.status)}>
                         {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
                       </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="w-full md:w-auto"
-                        onClick={() => {
-                          setSelectedActivity({ 
-                            requestId: activity.id,
-                            partnerName: activity.from_user?.name || activity.to_user?.name,
-                            partnerId: activity.from_user_id === user?.id ? activity.to_user_id : activity.from_user_id
-                          });
-                          setShowChatModal(true);
-                        }}
-                      >
-                        Chat
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1 md:flex-none"
+                          onClick={() => {
+                            setSelectedActivity({ 
+                              requestId: activity.id,
+                              partnerName: activity.from_user?.name || activity.to_user?.name,
+                              partnerId: activity.from_user_id === user?.id ? activity.to_user_id : activity.from_user_id
+                            });
+                            setShowChatModal(true);
+                          }}
+                        >
+                          Chat
+                        </Button>
+                        {(activity.status === 'accepted' || activity.status === 'shipped' || activity.status === 'ongoing') && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="flex-1 md:flex-none flex items-center gap-1"
+                            onClick={() => {
+                              setSelectedActivity({
+                                requestId: activity.id,
+                                partnerName: activity.from_user?.name || activity.to_user?.name,
+                                itemName: activity.from_item?.name || activity.to_item?.name || 'Item',
+                                barterPeriod: `${activity.barter_period || 14} days`,
+                                status: activity.status
+                              });
+                              setShowTrackingModal(true);
+                            }}
+                          >
+                            <TruckIcon className="w-4 h-4" />
+                            Track
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -557,6 +611,10 @@ const ItemBarterPage = () => {
         isOpen={showTrackingModal}
         onClose={() => setShowTrackingModal(false)}
         activity={selectedActivity}
+        onUpdate={() => {
+          loadRequests();
+          loadActivities();
+        }}
       />
     </div>
   );

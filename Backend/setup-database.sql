@@ -146,6 +146,26 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tracking info table for item exchanges
+CREATE TABLE IF NOT EXISTS tracking_info (
+  id SERIAL PRIMARY KEY,
+  barter_request_id INTEGER REFERENCES barter_requests(id) ON DELETE CASCADE,
+  tracking_number VARCHAR(100),
+  return_tracking_number VARCHAR(100),
+  shipping_method VARCHAR(50) DEFAULT 'Standard postal',
+  package_sent BOOLEAN DEFAULT false,
+  package_sent_date TIMESTAMP,
+  package_delivered BOOLEAN DEFAULT false,
+  package_delivered_date TIMESTAMP,
+  return_sent BOOLEAN DEFAULT false,
+  return_sent_date TIMESTAMP,
+  return_delivered BOOLEAN DEFAULT false,
+  return_delivered_date TIMESTAMP,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Insert default skill categories
 INSERT INTO skill_categories (name, description) VALUES 
 ('Culinary', 'Cooking and food-related skills'),
@@ -166,3 +186,4 @@ CREATE INDEX IF NOT EXISTS idx_barter_requests_from_user ON barter_requests(from
 CREATE INDEX IF NOT EXISTS idx_barter_requests_to_user ON barter_requests(to_user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_barter_request ON messages(barter_request_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_tracking_barter_request ON tracking_info(barter_request_id);
