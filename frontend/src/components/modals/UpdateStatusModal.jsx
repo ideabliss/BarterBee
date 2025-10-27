@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../UI';
-import { TruckIcon, CheckCircleIcon, PackageIcon, InboxIcon } from '@heroicons/react/24/outline';
+import { TruckIcon, CheckCircleIcon, ArchiveBoxIcon, InboxIcon } from '@heroicons/react/24/outline';
 import apiService from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -63,7 +63,7 @@ const UpdateStatusModal = ({ isOpen, onClose, activity, trackingData, onUpdate }
     if (isToUser) {
       // Item owner can update: pack, dispatch, receive return
       if (!trackingData.item_packed) {
-        options.push({ value: 'item_packed', label: 'Item Packed', icon: PackageIcon });
+        options.push({ value: 'item_packed', label: 'Item Packed', icon: ArchiveBoxIcon });
       } else if (!trackingData.package_sent) {
         options.push({ value: 'dispatched', label: 'Item Dispatched', icon: TruckIcon });
       } else if (trackingData.return_sent && !trackingData.return_delivered) {
@@ -76,7 +76,7 @@ const UpdateStatusModal = ({ isOpen, onClose, activity, trackingData, onUpdate }
       if (trackingData.package_sent && !trackingData.package_delivered) {
         options.push({ value: 'received', label: 'Item Received', icon: CheckCircleIcon });
       } else if (trackingData.package_delivered && !trackingData.return_packed) {
-        options.push({ value: 'return_packed', label: 'Return Packed', icon: PackageIcon });
+        options.push({ value: 'return_packed', label: 'Return Packed', icon: ArchiveBoxIcon });
       } else if (trackingData.return_packed && !trackingData.return_sent) {
         options.push({ value: 'return_dispatched', label: 'Return Dispatched', icon: TruckIcon });
       }

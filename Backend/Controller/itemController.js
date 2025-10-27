@@ -55,6 +55,27 @@ const itemController = {
     }
   },
 
+  // Get items for a specific user
+  getUserItemsById: async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const { data: items, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_available', true);
+      
+      if (error) {
+        return res.status(400).json({ error: error.message });
+      }
+      
+      res.json({ items });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   // Add new item
   createItem: async (req, res) => {
     try {

@@ -126,7 +126,10 @@ class ApiService {
     return this.request(`/skills${query ? `?${query}` : ''}`);
   }
 
-  async getUserSkills() {
+  async getUserSkills(userId = null) {
+    if (userId) {
+      return this.request(`/skills/user/${userId}`);
+    }
     return this.request('/skills/my-skills');
   }
 
@@ -156,7 +159,10 @@ class ApiService {
     return this.request(`/items${query ? `?${query}` : ''}`);
   }
 
-  async getUserItems() {
+  async getUserItems(userId = null) {
+    if (userId) {
+      return this.request(`/items/user/${userId}`);
+    }
     return this.request('/items/my-items');
   }
 

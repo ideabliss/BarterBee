@@ -10,6 +10,9 @@ router.get('/', auth, itemController.getAllItems);
 // Get user's items
 router.get('/my-items', auth, itemController.getUserItems);
 
+// Get items for a specific user
+router.get('/user/:userId', auth, itemController.getUserItemsById);
+
 // Add new item
 router.post('/', auth, itemController.createItem);
 

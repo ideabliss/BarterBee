@@ -30,6 +30,7 @@ const ThingBarterActivityPage = () => {
   const [updateExchangeModalOpen, setUpdateExchangeModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [acceptRequestModalOpen, setAcceptRequestModalOpen] = useState(false);
   
   // Form states
   const [exchangeDate, setExchangeDate] = useState('');
@@ -38,6 +39,7 @@ const ThingBarterActivityPage = () => {
   const [reviewText, setReviewText] = useState('');
   const [rating, setRating] = useState(0);
   const [reportText, setReportText] = useState('');
+  const [selectedMyItem, setSelectedMyItem] = useState('');
 
   // Mock activities data
   const mockActivities = [
@@ -384,7 +386,10 @@ const ThingBarterActivityPage = () => {
               <Button
                 size="sm"
                 className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
-                onClick={() => console.log('Accept request')}
+                onClick={() => {
+                  setSelectedActivity(activity);
+                  setAcceptRequestModalOpen(true);
+                }}
               >
                 <CheckCircleIcon className="h-4 w-4 mr-1" />
                 Accept Request
@@ -654,6 +659,100 @@ const ThingBarterActivityPage = () => {
     </Modal>
   );
 
+  // Accept Request Modal
+  const AcceptRequestModal = () => {
+    const handleAcceptRequest = () => {
+      console.log('Accepting request with item:', selectedMyItem);
+      setAcceptRequestModalOpen(false);
+      setSelectedMyItem('');
+    };
+
+    return (
+      <Modal
+        isOpen={acceptRequestModalOpen}
+        onClose={() => setAcceptRequestModalOpen(false)}
+        title="Accept Barter Request"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <img
+                src={selectedActivity?.requestedThing?.image}
+                alt={selectedActivity?.requestedThing?.name}
+                className="w-12 h-12 object-cover rounded-lg"
+              />
+              <div>
+                <p className="font-medium">{selectedActivity?.requester?.name} wants to borrow:</p>
+                <p className="text-sm text-gray-600">{selectedActivity?.requestedThing?.name}</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Your Item to Exchange
+            </label>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {currentUser.things.filter(thing => thing.available).map(thing => (
+                <label key={thing.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="myItem"
+                    value={thing.id}
+                    checked={selectedMyItem === thing.id}
+                    onChange={(e) => setSelectedMyItem(e.target.value)}
+                    className="text-blue-600"
+                  />
+                  <img
+                    src={thing.image}
+                    alt={thing.name}
+                    className="w-12 h-12 object-cover rounded-lg"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium">{thing.name}</p>
+                    <p className="text-sm text-gray-600">{thing.category} • {thing.condition || 'Good'} condition</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {currentUser.things.filter(thing => thing.available).length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                You don't have any available items. <Link to="/profile?tab=things" className="text-blue-600 hover:underline">Add items to your profile</Link>
+              </p>
+            )}
+          </div>
+
+          <div className="bg-green-50 p-3 rounded-lg">
+            <p className="text-sm text-green-800">
+              <strong>Note:</strong> Both items will be exchanged temporarily. Make sure to return items in the same condition.
+            </p>
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => {
+                setAcceptRequestModalOpen(false);
+                setSelectedMyItem('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+              onClick={handleAcceptRequest}
+              disabled={!selectedMyItem || currentUser.things.filter(thing => thing.available).length === 0}
+            >
+              Accept Request
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   // Report Modal
   const ReportModal = () => (
     <Modal
@@ -805,6 +904,7 @@ const ThingBarterActivityPage = () => {
         <UpdateExchangeModal />
         <ReviewModal />
         <ReportModal />
+        <AcceptRequestModal />
       </div>
     </div>
   );

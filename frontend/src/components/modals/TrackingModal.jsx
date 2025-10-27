@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../UI';
-import { TruckIcon, CheckCircleIcon, ClockIcon, PlusIcon, PackageIcon } from '@heroicons/react/24/outline';
+import { TruckIcon, CheckCircleIcon, ClockIcon, PlusIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 import UpdateStatusModal from './UpdateStatusModal';
 import apiService from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -64,89 +64,95 @@ const TrackingModal = ({ isOpen, onClose, activity, onUpdate }) => {
 
   const getTrackingSteps = () => {
     if (!trackingData) {
-      return [
-        { id: 1, title: 'Item Packed', completed: false, date: 'Pending', canUpdate: false },
-        { id: 2, title: 'Item Dispatched', completed: false, date: 'Pending', canUpdate: false },
-        { id: 3, title: 'Item Received', completed: false, date: 'Pending', canUpdate: false },
-        { id: 4, title: 'Exchange Period', completed: false, date: 'Pending', canUpdate: false },
-        { id: 5, title: 'Return Packed', completed: false, date: 'Pending', canUpdate: false },
-        { id: 6, title: 'Return Dispatched', completed: false, date: 'Pending', canUpdate: false },
-        { id: 7, title: 'Return Received', completed: false, date: 'Pending', canUpdate: false },
-        { id: 8, title: 'Exchange Complete', completed: false, date: 'Pending', canUpdate: false }
-      ];
+      return {
+        yourItem: [
+          { id: 1, title: 'Your Item Packed', completed: false, date: 'Pending', canUpdate: false },
+          { id: 2, title: 'Your Item Dispatched', completed: false, date: 'Pending', canUpdate: false },
+          { id: 3, title: 'Your Item Delivered', completed: false, date: 'Pending', canUpdate: false }
+        ],
+        theirItem: [
+          { id: 4, title: 'Their Item Packed', completed: false, date: 'Pending', canUpdate: false },
+          { id: 5, title: 'Their Item Dispatched', completed: false, date: 'Pending', canUpdate: false },
+          { id: 6, title: 'Their Item Received', completed: false, date: 'Pending', canUpdate: false }
+        ]
+      };
     }
     
     const isFromUser = user?.id === barterRequest?.from_user_id;
     const isToUser = user?.id === barterRequest?.to_user_id;
     
-    return [
-      { 
-        id: 1, 
-        title: 'Item Packed', 
-        completed: trackingData.item_packed,
-        date: trackingData.item_packed_date ? new Date(trackingData.item_packed_date).toLocaleDateString() : 'Pending',
-        canUpdate: isToUser && !trackingData.item_packed,
-        userAction: 'Pack your item for shipping'
-      },
-      { 
-        id: 2, 
-        title: 'Item Dispatched', 
-        completed: trackingData.package_sent,
-        date: trackingData.package_sent_date ? new Date(trackingData.package_sent_date).toLocaleDateString() : 'Pending',
-        tracking_number: trackingData.tracking_number,
-        canUpdate: isToUser && trackingData.item_packed && !trackingData.package_sent,
-        userAction: 'Dispatch the packed item'
-      },
-      { 
-        id: 3, 
-        title: 'Item Received', 
-        completed: trackingData.package_delivered,
-        date: trackingData.package_delivered_date ? new Date(trackingData.package_delivered_date).toLocaleDateString() : 'Pending',
-        canUpdate: isFromUser && trackingData.package_sent && !trackingData.package_delivered,
-        userAction: 'Confirm item received'
-      },
-      { 
-        id: 4, 
-        title: 'Exchange Period', 
-        completed: trackingData.exchange_started,
-        date: trackingData.exchange_started_date ? new Date(trackingData.exchange_started_date).toLocaleDateString() : 'Pending',
-        canUpdate: false,
-        userAction: 'Enjoy using the item'
-      },
-      { 
-        id: 5, 
-        title: 'Return Packed', 
-        completed: trackingData.return_packed,
-        date: trackingData.return_packed_date ? new Date(trackingData.return_packed_date).toLocaleDateString() : 'Pending',
-        canUpdate: isFromUser && trackingData.package_delivered && !trackingData.return_packed,
-        userAction: 'Pack item for return'
-      },
-      { 
-        id: 6, 
-        title: 'Return Dispatched', 
-        completed: trackingData.return_sent,
-        date: trackingData.return_sent_date ? new Date(trackingData.return_sent_date).toLocaleDateString() : 'Pending',
-        tracking_number: trackingData.return_tracking_number,
-        canUpdate: isFromUser && trackingData.return_packed && !trackingData.return_sent,
-        userAction: 'Dispatch return package'
-      },
-      { 
-        id: 7, 
-        title: 'Return Received', 
-        completed: trackingData.return_delivered,
-        date: trackingData.return_delivered_date ? new Date(trackingData.return_delivered_date).toLocaleDateString() : 'Pending',
-        canUpdate: isToUser && trackingData.return_sent && !trackingData.return_delivered,
-        userAction: 'Confirm return received'
-      },
-      { 
-        id: 8, 
-        title: 'Exchange Complete', 
-        completed: trackingData.exchange_completed,
-        date: trackingData.exchange_completed_date ? new Date(trackingData.exchange_completed_date).toLocaleDateString() : 'Pending',
-        canUpdate: false,
-        userAction: 'Exchange completed successfully'
-      }
-    ];
+    return {
+      yourItem: [
+        { 
+          id: 1, 
+          title: `Your Item Packed (${isFromUser ? barterRequest?.from_item_name : barterRequest?.to_item_name})`, 
+          completed: isFromUser ? trackingData.from_item_packed : trackingData.to_item_packed,
+          date: isFromUser ? 
+            (trackingData.from_item_packed_date ? new Date(trackingData.from_item_packed_date).toLocaleDateString() : 'Pending') :
+            (trackingData.to_item_packed_date ? new Date(trackingData.to_item_packed_date).toLocaleDateString() : 'Pending'),
+          canUpdate: isFromUser ? !trackingData.from_item_packed : !trackingData.to_item_packed,
+          userAction: 'Pack your item for shipping'
+        },
+        { 
+          id: 2, 
+          title: 'Your Item Dispatched', 
+          completed: isFromUser ? trackingData.from_package_sent : trackingData.to_package_sent,
+          date: isFromUser ? 
+            (trackingData.from_package_sent_date ? new Date(trackingData.from_package_sent_date).toLocaleDateString() : 'Pending') :
+            (trackingData.to_package_sent_date ? new Date(trackingData.to_package_sent_date).toLocaleDateString() : 'Pending'),
+          tracking_number: isFromUser ? trackingData.from_tracking_number : trackingData.to_tracking_number,
+          canUpdate: isFromUser ? 
+            (trackingData.from_item_packed && !trackingData.from_package_sent) :
+            (trackingData.to_item_packed && !trackingData.to_package_sent),
+          userAction: 'Dispatch your packed item'
+        },
+        { 
+          id: 3, 
+          title: 'Your Item Delivered', 
+          completed: isFromUser ? trackingData.from_package_delivered : trackingData.to_package_delivered,
+          date: isFromUser ? 
+            (trackingData.from_package_delivered_date ? new Date(trackingData.from_package_delivered_date).toLocaleDateString() : 'Pending') :
+            (trackingData.to_package_delivered_date ? new Date(trackingData.to_package_delivered_date).toLocaleDateString() : 'Pending'),
+          canUpdate: false,
+          userAction: 'Item delivered to partner'
+        }
+      ],
+      theirItem: [
+        { 
+          id: 4, 
+          title: `Their Item Packed (${isFromUser ? barterRequest?.to_item_name : barterRequest?.from_item_name})`, 
+          completed: isFromUser ? trackingData.to_item_packed : trackingData.from_item_packed,
+          date: isFromUser ? 
+            (trackingData.to_item_packed_date ? new Date(trackingData.to_item_packed_date).toLocaleDateString() : 'Pending') :
+            (trackingData.from_item_packed_date ? new Date(trackingData.from_item_packed_date).toLocaleDateString() : 'Pending'),
+          canUpdate: false,
+          userAction: 'Waiting for partner to pack'
+        },
+        { 
+          id: 5, 
+          title: 'Their Item Dispatched', 
+          completed: isFromUser ? trackingData.to_package_sent : trackingData.from_package_sent,
+          date: isFromUser ? 
+            (trackingData.to_package_sent_date ? new Date(trackingData.to_package_sent_date).toLocaleDateString() : 'Pending') :
+            (trackingData.from_package_sent_date ? new Date(trackingData.from_package_sent_date).toLocaleDateString() : 'Pending'),
+          tracking_number: isFromUser ? trackingData.to_tracking_number : trackingData.from_tracking_number,
+          canUpdate: false,
+          userAction: 'Partner dispatching item'
+        },
+        { 
+          id: 6, 
+          title: 'Their Item Received', 
+          completed: isFromUser ? trackingData.to_package_delivered : trackingData.from_package_delivered,
+          date: isFromUser ? 
+            (trackingData.to_package_delivered_date ? new Date(trackingData.to_package_delivered_date).toLocaleDateString() : 'Pending') :
+            (trackingData.from_package_delivered_date ? new Date(trackingData.from_package_delivered_date).toLocaleDateString() : 'Pending'),
+          canUpdate: isFromUser ? 
+            (trackingData.to_package_sent && !trackingData.to_package_delivered) :
+            (trackingData.from_package_sent && !trackingData.from_package_delivered),
+          userAction: 'Confirm item received'
+        }
+      ]
+    };
   };
   
   const trackingSteps = getTrackingSteps();
@@ -161,7 +167,10 @@ const TrackingModal = ({ isOpen, onClose, activity, onUpdate }) => {
             <TruckIcon className="w-5 h-5 text-blue-600" />
             <div>
               <p className="font-medium">Exchange with {activity?.partnerName}</p>
-              <p className="text-sm text-gray-600">{activity?.itemName}</p>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p>📦 Your item: {barterRequest?.from_item_name || activity?.itemName}</p>
+                <p>📦 Their item: {barterRequest?.to_item_name || 'Item'}</p>
+              </div>
             </div>
           </div>
           <div className="text-sm text-gray-600">
@@ -210,52 +219,112 @@ const TrackingModal = ({ isOpen, onClose, activity, onUpdate }) => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {trackingSteps.map((step, index) => (
-              <div key={step.id} className="flex items-start gap-3">
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    step.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
-                  }`}>
-                    {step.completed ? (
-                      <CheckCircleIcon className="w-5 h-5" />
-                    ) : (
-                      <ClockIcon className="w-5 h-5" />
-                    )}
+          <div className="space-y-6">
+            {/* Your Item Section */}
+            <div>
+              <h4 className="font-medium text-blue-600 mb-3 flex items-center gap-2">
+                <ArchiveBoxIcon className="w-4 h-4" />
+                Your Item Progress
+              </h4>
+              <div className="space-y-3">
+                {trackingSteps.yourItem.map((step, index) => (
+                  <div key={step.id} className="flex items-start gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        step.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                      }`}>
+                        {step.completed ? (
+                          <CheckCircleIcon className="w-4 h-4" />
+                        ) : (
+                          <ClockIcon className="w-4 h-4" />
+                        )}
+                      </div>
+                      {index < trackingSteps.yourItem.length - 1 && (
+                        <div className={`w-0.5 h-6 mt-1 ${
+                          step.completed ? 'bg-green-500' : 'bg-gray-200'
+                        }`} />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className={`text-sm font-medium ${step.completed ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {step.title}
+                        </p>
+                        {step.canUpdate && (
+                          <Button 
+                            size="sm" 
+                            className="ml-2 px-2 py-1 text-xs"
+                            onClick={() => setShowUpdateModal(true)}
+                          >
+                            Update
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">{step.date}</p>
+                      {step.userAction && !step.completed && (
+                        <p className="text-xs text-blue-600 italic">{step.userAction}</p>
+                      )}
+                      {step.tracking_number && (
+                        <p className="text-xs text-blue-600">Tracking: {step.tracking_number}</p>
+                      )}
+                    </div>
                   </div>
-                  {index < trackingSteps.length - 1 && (
-                    <div className={`w-0.5 h-8 mt-1 ${
-                      step.completed ? 'bg-green-500' : 'bg-gray-200'
-                    }`} />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className={`font-medium ${step.completed ? 'text-gray-900' : 'text-gray-400'}`}>
-                      {step.title}
-                    </p>
-                    {step.canUpdate && (
-                      <Button 
-                        size="sm" 
-                        className="ml-2 px-2 py-1 text-xs"
-                        onClick={() => {
-                          setShowUpdateModal(true);
-                        }}
-                      >
-                        Update
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-500">{step.date}</p>
-                  {step.userAction && !step.completed && step.canUpdate && (
-                    <p className="text-xs text-blue-600 italic">{step.userAction}</p>
-                  )}
-                  {step.tracking_number && (
-                    <p className="text-xs text-blue-600">Tracking: {step.tracking_number}</p>
-                  )}
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Their Item Section */}
+            <div>
+              <h4 className="font-medium text-orange-600 mb-3 flex items-center gap-2">
+                <TruckIcon className="w-4 h-4" />
+                Their Item Progress
+              </h4>
+              <div className="space-y-3">
+                {trackingSteps.theirItem.map((step, index) => (
+                  <div key={step.id} className="flex items-start gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        step.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                      }`}>
+                        {step.completed ? (
+                          <CheckCircleIcon className="w-4 h-4" />
+                        ) : (
+                          <ClockIcon className="w-4 h-4" />
+                        )}
+                      </div>
+                      {index < trackingSteps.theirItem.length - 1 && (
+                        <div className={`w-0.5 h-6 mt-1 ${
+                          step.completed ? 'bg-green-500' : 'bg-gray-200'
+                        }`} />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className={`text-sm font-medium ${step.completed ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {step.title}
+                        </p>
+                        {step.canUpdate && (
+                          <Button 
+                            size="sm" 
+                            className="ml-2 px-2 py-1 text-xs"
+                            onClick={() => setShowUpdateModal(true)}
+                          >
+                            Update
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">{step.date}</p>
+                      {step.userAction && !step.completed && (
+                        <p className="text-xs text-blue-600 italic">{step.userAction}</p>
+                      )}
+                      {step.tracking_number && (
+                        <p className="text-xs text-blue-600">Tracking: {step.tracking_number}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -271,7 +340,7 @@ const TrackingModal = ({ isOpen, onClose, activity, onUpdate }) => {
           <Button variant="outline" onClick={onClose} className="flex-1">
             Close
           </Button>
-          {trackingData && getTrackingSteps().some(step => step.canUpdate) && (
+          {trackingData && (getTrackingSteps().yourItem.some(step => step.canUpdate) || getTrackingSteps().theirItem.some(step => step.canUpdate)) && (
             <Button 
               onClick={() => setShowUpdateModal(true)} 
               className="flex-1"

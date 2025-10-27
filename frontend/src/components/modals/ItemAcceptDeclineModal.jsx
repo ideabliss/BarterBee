@@ -1,15 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../UI';
+import apiService from '../../services/api';
 
 const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline, currentUserId }) => {
   const [responseMessage, setResponseMessage] = useState('');
   const [postalAddress, setPostalAddress] = useState('');
   const [loading, setLoading] = useState(false);
-
-  if (!isOpen) return null;
+  const [selectedSenderItem, setSelectedSenderItem] = useState('');
+  const [senderItems, setSenderItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   
   // Check if current user is the sender (from_user) or receiver (to_user)
   const isSender = activity?.fromUserId === currentUserId;
+  
+  // Fetch sender's items when modal opens
+  useEffect(() => {
+    if (isOpen && !isSender && activity?.fromUserId) {
+      fetchSenderItems();
+    }
+  }, [isOpen, isSender, activity?.fromUserId]);
+
+  if (!isOpen) return null;
+  
+  const fetchSenderItems = async () => {
+    try {
+      setLoadingItems(true);
+      console.log('Fetching items for user:', activity.fromUserId);
+      const response = await apiService.getUserItems(activity.fromUserId);
+      console.log('Sender items response:', response);
+      const availableItems = response.items?.filter(item => item.is_available !== false) || [];
+      console.log('Available items:', availableItems);
+      setSenderItems(availableItems);
+    } catch (error) {
+      console.error('Failed to fetch sender items:', error);
+      setSenderItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
 
   const handleAccept = async () => {
     setLoading(true);
@@ -70,12 +98,58 @@ const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm font-medium">They want:</span>
-              <span className="text-sm">{activity?.wantedItem}</span>
+              <span className="text-sm">{activity?.itemName || activity?.wantedItem || 'Item'}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">They offer:</span>
-              <span className="text-sm">{activity?.offeredItem}</span>
-            </div>
+            {isSender ? (
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">You offer:</span>
+                <span className="text-sm">{activity?.offeredItemName || activity?.offeredItem || 'Your item'}</span>
+              </div>
+            ) : (
+              <div>
+                <span className="text-sm font-medium mb-2 block">Select item you want from them:</span>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {loadingItems ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Loading items...</p>
+                    </div>
+                  ) : senderItems.length > 0 ? (
+                    senderItems.map(item => (
+                      <label key={item.id} className={`flex items-center gap-3 p-2 border rounded-lg cursor-pointer transition-colors ${
+                        selectedSenderItem == item.id 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="senderItem"
+                          value={item.id}
+                          checked={selectedSenderItem == item.id}
+                          onChange={(e) => setSelectedSenderItem(e.target.value)}
+                          className="text-green-600"
+                        />
+                        <img
+                          src={item.image || '/api/placeholder/32/32'}
+                          alt={item.name}
+                          className="w-8 h-8 object-cover rounded"
+                        />
+                        <div className="flex-1">
+                          <p className={`text-sm font-medium ${
+                            selectedSenderItem == item.id ? 'text-green-900' : 'text-gray-900'
+                          }`}>{item.name}</p>
+                          <p className={`text-xs ${
+                            selectedSenderItem == item.id ? 'text-green-600' : 'text-gray-500'
+                          }`}>{item.category}</p>
+                        </div>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No items available</p>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-sm font-medium">Barter period:</span>
               <span className="text-sm">{activity?.barterPeriod}</span>
@@ -151,7 +225,7 @@ const ItemAcceptDeclineModal = ({ isOpen, onClose, activity, onAccept, onDecline
               </Button>
               <Button 
                 onClick={handleAccept}
-                disabled={loading}
+                disabled={loading || !selectedSenderItem}
                 loading={loading}
                 className="flex-1 bg-green-500 hover:bg-green-600"
               >
