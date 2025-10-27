@@ -14,39 +14,66 @@ const initializeSocket = (server) => {
       ],
       methods: ["GET", "POST"],
       credentials: true
-    }
+    },
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000,
+    pingInterval: 25000
   });
 
   io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+    console.log('🔌 User connected:', socket.id);
 
     // Chat functionality
     socket.on('join-chat', (barterRequestId) => {
       socket.join(`chat-${barterRequestId}`);
-      console.log(`User ${socket.id} joined chat-${barterRequestId}`);
+      console.log(`💬 User ${socket.id} joined chat-${barterRequestId}`);
     });
 
     socket.on('send-message', (data) => {
       socket.to(`chat-${data.barterRequestId}`).emit('receive-message', data);
     });
 
-    // Video call functionality
+    // ==================== VIDEO CALL FUNCTIONALITY ====================
+    
+    // Join video room
     socket.on('join-video-room', (data) => {
       const { sessionId, userId, userName } = data;
       const roomName = `video-${sessionId}`;
       
+      // Store user info on socket
+      socket.userId = userId;
+      socket.userName = userName;
+      socket.sessionId = sessionId;
+      socket.roomName = roomName;
+      
       // Get existing room members before joining
       const room = io.sockets.adapter.rooms.get(roomName);
-      const existingMembers = room ? Array.from(room) : [];
+      const existingMembers = room ? Array.from(room).filter(id => id !== socket.id) : [];
       
-      console.log(`👤 User ${userName} (${socket.id}) joining video room: ${sessionId}`);
+      console.log(`👤 User ${userName} (${userId}) joining video room: ${sessionId}`);
       console.log(`👥 Existing members in room:`, existingMembers.length);
       
       // Join the room
       socket.join(roomName);
-      socket.userId = userId;
-      socket.userName = userName;
-      socket.sessionId = sessionId;
+      
+      // Send list of existing users to the newly joined user
+      const existingUsers = [];
+      existingMembers.forEach(memberId => {
+        const memberSocket = io.sockets.sockets.get(memberId);
+        if (memberSocket && memberSocket.userId) {
+          existingUsers.push({
+            userId: memberSocket.userId,
+            userName: memberSocket.userName,
+            socketId: memberId
+          });
+        }
+      });
+      
+      // Notify the new user about existing users
+      if (existingUsers.length > 0) {
+        console.log(`📤 Sending ${existingUsers.length} existing users to ${userName}`);
+        socket.emit('existing-users', existingUsers);
+      }
       
       // Notify existing users about the new user
       socket.to(roomName).emit('user-joined', {
@@ -54,69 +81,124 @@ const initializeSocket = (server) => {
         userName,
         socketId: socket.id
       });
-      console.log(`📤 Notified ${existingMembers.length} existing users about ${userName} joining`);
+      console.log(`📤 Notified ${existingMembers.length} users about ${userName} joining`);
       
-      // Send existing members to the new user
-      existingMembers.forEach(memberId => {
-        const memberSocket = io.sockets.sockets.get(memberId);
-        if (memberSocket && memberSocket.userId) {
-          console.log(`📤 Notifying ${userName} about existing user ${memberSocket.userName}`);
-          socket.emit('user-joined', {
-            userId: memberSocket.userId,
-            userName: memberSocket.userName,
-            socketId: memberId
-          });
-        }
+      // Send confirmation to the user
+      socket.emit('room-joined', {
+        roomName,
+        sessionId,
+        userCount: existingMembers.length + 1
       });
     });
 
+    // WebRTC Signaling - Offer
+    socket.on('webrtc-offer', (data) => {
+      const { targetSocketId, offer, sessionId } = data;
+      console.log(`📤 Forwarding offer from ${socket.userName} to ${targetSocketId}`);
+      
+      io.to(targetSocketId).emit('webrtc-offer', {
+        offer,
+        fromSocketId: socket.id,
+        fromUserId: socket.userId,
+        fromUserName: socket.userName,
+        sessionId
+      });
+    });
+
+    // WebRTC Signaling - Answer
+    socket.on('webrtc-answer', (data) => {
+      const { targetSocketId, answer, sessionId } = data;
+      console.log(`📤 Forwarding answer from ${socket.userName} to ${targetSocketId}`);
+      
+      io.to(targetSocketId).emit('webrtc-answer', {
+        answer,
+        fromSocketId: socket.id,
+        fromUserId: socket.userId,
+        fromUserName: socket.userName,
+        sessionId
+      });
+    });
+
+    // WebRTC Signaling - ICE Candidate
+    socket.on('webrtc-ice-candidate', (data) => {
+      const { targetSocketId, candidate, sessionId } = data;
+      console.log(`🧊 Forwarding ICE candidate from ${socket.userName} to ${targetSocketId}`);
+      
+      io.to(targetSocketId).emit('webrtc-ice-candidate', {
+        candidate,
+        fromSocketId: socket.id,
+        fromUserId: socket.userId,
+        sessionId
+      });
+    });
+
+    // Legacy support for old events (backward compatibility)
     socket.on('offer', (data) => {
-      console.log(`📤 Relaying offer from ${socket.userName} to room video-${data.sessionId}`);
+      console.log(`📤 [Legacy] Relaying offer from ${socket.userName}`);
       socket.to(`video-${data.sessionId}`).emit('offer', {
         ...data,
         fromUserId: socket.userId,
-        fromUserName: socket.userName
+        fromUserName: socket.userName,
+        fromSocketId: socket.id
       });
     });
 
     socket.on('answer', (data) => {
-      console.log(`📤 Relaying answer from ${socket.userName} to room video-${data.sessionId}`);
+      console.log(`📤 [Legacy] Relaying answer from ${socket.userName}`);
       socket.to(`video-${data.sessionId}`).emit('answer', {
         ...data,
         fromUserId: socket.userId,
-        fromUserName: socket.userName
+        fromUserName: socket.userName,
+        fromSocketId: socket.id
       });
     });
 
     socket.on('ice-candidate', (data) => {
-      console.log(`🧊 Relaying ICE candidate from ${socket.userName} to room video-${data.sessionId}`);
-      socket.to(`video-${data.sessionId}`).emit('ice-candidate', data);
+      console.log(`🧊 [Legacy] Relaying ICE candidate from ${socket.userName}`);
+      socket.to(`video-${data.sessionId}`).emit('ice-candidate', {
+        ...data,
+        fromSocketId: socket.id
+      });
     });
 
+    // Video chat message
     socket.on('video-chat-message', (data) => {
+      console.log(`💬 Video chat message from ${socket.userName}`);
       socket.to(`video-${data.sessionId}`).emit('video-chat-message', data);
     });
 
+    // Leave video room
     socket.on('leave-video-room', (sessionId) => {
-      socket.to(`video-${sessionId}`).emit('user-left', {
+      const roomName = `video-${sessionId}`;
+      console.log(`👋 User ${socket.userName} leaving room ${roomName}`);
+      
+      socket.to(roomName).emit('user-left', {
         userId: socket.userId,
-        userName: socket.userName
+        userName: socket.userName,
+        socketId: socket.id
       });
-      socket.leave(`video-${sessionId}`);
+      
+      socket.leave(roomName);
     });
 
+    // Disconnect handling
     socket.on('disconnect', () => {
-      console.log('❌ User disconnected:', socket.id, socket.userName);
+      console.log('❌ User disconnected:', socket.id, socket.userName || 'Unknown');
       
-      // Notify the specific video room about disconnection
-      if (socket.sessionId) {
-        socket.to(`video-${socket.sessionId}`).emit('user-left', {
+      // Notify the video room about disconnection
+      if (socket.sessionId && socket.roomName) {
+        socket.to(socket.roomName).emit('user-left', {
           userId: socket.userId,
           userName: socket.userName,
           socketId: socket.id
         });
-        console.log(`📤 Notified video room ${socket.sessionId} about ${socket.userName} leaving`);
+        console.log(`📤 Notified room ${socket.roomName} about ${socket.userName} disconnecting`);
       }
+    });
+
+    // Error handling
+    socket.on('error', (error) => {
+      console.error('❌ Socket error:', socket.id, error);
     });
   });
 
